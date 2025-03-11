@@ -1,0 +1,41 @@
+# Source files
+src/
+public/
+
+# Config files
+.eslintrc.js
+.eslintignore
+.prettierrc
+.prettierignore
+tsconfig.json
+vite.config.ts
+vitest.config.ts
+
+# Editor directories and files
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Log files
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Test files
+tests/
+coverage/
+
+# Build files
+node_modules/
+
+# Git files
+.git/
+.gitignore
+
+# Other
+.DS_Store 

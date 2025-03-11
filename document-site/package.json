@@ -1,0 +1,22 @@
+{
+  "name": "document-site",
+  "version": "1.0.0",
+  "description": "Fast-JSON-UI Documentation",
+  "main": "index.js",
+  "scripts": {
+    "docs:dev": "vitepress dev docs",
+    "docs:build": "vitepress build docs",
+    "docs:preview": "vitepress preview docs"
+  },
+  "keywords": [
+    "fast-json-ui",
+    "documentation",
+    "vue",
+    "json"
+  ],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "vitepress": "^1.0.0-rc.40"
+  }
+}
