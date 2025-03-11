@@ -46,7 +46,7 @@
               :class="config.type"
               @change="onDragChange"
             >
-              <template #item="{ element, index }">
+              <template #item="{element, index}">
                 <component-renderer 
                   :config="element" 
                   :is-editor="isEditor"

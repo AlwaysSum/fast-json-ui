@@ -43,7 +43,7 @@
   "dependencies": {
     "fast-json-ui-vue": "../ui-vue",
     "vue": "^3.2.47",
-    "vuedraggable": "^2.24.3"
+    "vuedraggable": "^4.1.0"
   },
   "devDependencies": {
     "@types/node": "^18.19.80",
