@@ -2,8 +2,9 @@
 import { ref } from 'vue';
 import BasicExample from './examples/BasicExample.vue';
 import AdvancedExample from './examples/AdvancedExample.vue';
+import EditorExample from './examples/EditorExample.vue';
 
-const activeTab = ref('basic');
+const activeTab = ref<string>('basic');
 </script>
 
 <template>
@@ -26,11 +27,18 @@ const activeTab = ref('basic');
       >
         Advanced Example
       </button>
+      <button 
+        :class="{ active: activeTab === 'editor' }" 
+        @click="activeTab = 'editor'"
+      >
+        UI Editor
+      </button>
     </nav>
     
     <main>
       <BasicExample v-if="activeTab === 'basic'" />
       <AdvancedExample v-else-if="activeTab === 'advanced'" />
+      <EditorExample v-else-if="activeTab === 'editor'" />
     </main>
     
     <footer>

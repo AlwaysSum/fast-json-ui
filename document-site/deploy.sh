@@ -26,4 +26,4 @@ git branch -M main
 # 如果发布到 https://<USERNAME>.github.io/<REPO>
 git push -f git@github.com:AlwaysSum/fast-json-ui.git main:gh-pages
 
-cd - 
+cd -
