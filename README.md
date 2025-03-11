@@ -9,6 +9,8 @@
 
 Fast-JSON-UI-Vue 是一个基于 Vue 3 的库，用于将 JSON 配置转换为 UI 组件。通过简单的 JSON 配置，您可以快速构建复杂的用户界面，无需编写大量的 HTML 和 CSS 代码。
 
+[https://alwayssum.github.io/fast-json-ui/](https://alwayssum.github.io/fast-json-ui/)
+
 ## 特色功能
 
 - **JSON 转 UI 组件**：通过 JSON 配置快速生成 Vue 组件

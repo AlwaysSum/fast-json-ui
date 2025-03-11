@@ -3,6 +3,8 @@ export default {
   description: '将 JSON 配置转换为 UI 组件的 Vue 3 库',
   lang: 'zh-CN',
   lastUpdated: true,
+  base: '/fast-json-ui/',
+  ignoreDeadLinks: true,
   
   locales: {
     root: {
@@ -21,7 +23,7 @@ export default {
   },
 
   themeConfig: {
-    logo: '/logo.png',
+    logo: '/logo.svg',
     nav: [
       { text: '首页', link: '/' },
       { text: '指南', link: '/guide/' },
