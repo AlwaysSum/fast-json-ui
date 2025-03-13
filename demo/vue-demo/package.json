@@ -4,9 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --force",
+    "dev:hot": "vite --force",
     "build": "vue-tsc -b && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "clean": "rm -rf node_modules/.vite",
+    "rebuild": "cd ../../ui-vue && npm run build:demo && cd ../demo/vue-demo && npm run clean && npm run dev",
+    "watch-lib": "cd ../../ui-vue && npm run build:watch"
   },
   "dependencies": {
     "fast-json-ui-editor": "file:../../ui-vue-editor",

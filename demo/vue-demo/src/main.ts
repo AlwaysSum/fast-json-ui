@@ -3,6 +3,7 @@ import "./style.css";
 import App from "./App.vue";
 import FastJsonUI, { registerComponent } from "fast-json-ui-vue";
 import * as EditorModule from "fast-json-ui-editor";
+import "fast-json-ui-editor/dist/style.css";
 
 //注册自定义 Vue
 import CustomComponent from "./components/custom/CustomComponent.vue";

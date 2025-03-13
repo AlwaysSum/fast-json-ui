@@ -11,6 +11,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build && vue-tsc --emitDeclarationOnly",
+    "build:watch": "vite build --watch",
+    "build:demo": "vite build && vue-tsc --emitDeclarationOnly && echo '构建完成，demo将自动更新'",
     "preview": "vite preview",
     "lint": "eslint . --ext .vue,.js,.ts,.jsx,.tsx --fix",
     "test": "vitest run",

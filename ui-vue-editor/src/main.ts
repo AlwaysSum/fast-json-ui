@@ -1,6 +1,6 @@
 import { createApp } from 'vue';
 import App from './App.vue';
-import FastJsonUi from 'fast-json-ui-vue';
+import FastJsonUi  from 'fast-json-ui-vue';
 
 const app = createApp(App);
 

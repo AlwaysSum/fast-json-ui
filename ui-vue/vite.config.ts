@@ -10,6 +10,9 @@ export default defineConfig({
     },
   },
   build: {
+    sourcemap: true,
+    cssCodeSplit: false,
+    emptyOutDir: true,
     lib: {
       entry: resolve(__dirname, 'src/index.ts'),
       name: 'FastJsonUiVue',
@@ -23,7 +26,10 @@ export default defineConfig({
         globals: {
           vue: 'Vue',
         },
+        exports: 'named',
       },
     },
+    // 添加watch配置，支持监听模式
+    watch: process.env.VITE_WATCH === 'true' ? {} : null,
   },
 }); 

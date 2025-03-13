@@ -1,5 +1,3 @@
-import { ComponentConfig } from 'fast-json-ui-vue';
-
 /**
  * 组件分类
  */
@@ -11,15 +9,25 @@ export enum ComponentCategory {
 }
 
 /**
- * 组件元数据
+ * 属性类型
  */
-export interface ComponentMeta {
+export enum PropertyType {
+  STRING = 'string',
+  NUMBER = 'number',
+  BOOLEAN = 'boolean',
+  SELECT = 'select',
+  COLOR = 'color',
+  ICON = 'icon',
+  EXPRESSION = 'expression',
+  METHOD = 'method'
+}
+
+/**
+ * 组件配置
+ */
+export interface ComponentConfig {
   type: string;
-  name: string;
-  icon?: string;
-  category: ComponentCategory;
-  defaultConfig: ComponentConfig;
-  properties: PropertyMeta[];
+  [key: string]: any;
 }
 
 /**
@@ -35,17 +43,15 @@ export interface PropertyMeta {
 }
 
 /**
- * 属性类型
+ * 组件元数据
  */
-export enum PropertyType {
-  STRING = 'string',
-  NUMBER = 'number',
-  BOOLEAN = 'boolean',
-  SELECT = 'select',
-  COLOR = 'color',
-  ICON = 'icon',
-  EXPRESSION = 'expression',
-  METHOD = 'method'
+export interface ComponentMeta {
+  type: string;
+  name: string;
+  icon?: string;
+  category: ComponentCategory;
+  defaultConfig: ComponentConfig;
+  properties: PropertyMeta[];
 }
 
 /**
@@ -69,12 +75,11 @@ export interface EditorConfig {
   theme?: 'light' | 'dark';
 }
 
-// Re-export types from fast-json-ui-vue
-export type { ComponentConfig } from 'fast-json-ui-vue';
-
-// Editor specific types
+/**
+ * 编辑器选项
+ */
 export interface EditorOptions {
-  initialConfig?: any;
+  initialConfig?: ComponentConfig;
   readOnly?: boolean;
   theme?: string;
 } 

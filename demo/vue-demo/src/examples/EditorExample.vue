@@ -110,7 +110,7 @@ p {
   margin-bottom: 24px;
   border: 1px solid #ddd;
   border-radius: 4px;
-  overflow: hidden;
+  overflow: auto;
 }
 
 .output-section {

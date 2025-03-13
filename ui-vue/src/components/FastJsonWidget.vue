@@ -1,9 +1,20 @@
 <template>
   <component 
+    :class="`fast-json-widget fast-json-widget__${config.type}`"
     :is="getComponentByType(config.type)" 
     :config="config" 
     :data="data" 
     :methods="methods"
+    @click="handleEvent($event, 'onTap')"
+    @dblclick="handleEvent($event, 'onDoubleTap')"
+    @mouseenter="handleEvent($event, 'onMouseEnter')"
+    @mouseleave="onMouseLeave($event)"
+    @contextmenu="handleEvent($event, 'onContextMenu')"
+    @mousedown="startLongPress($event)"
+    @mouseup="cancelLongPress()"
+    @touchstart="startLongPress($event)"
+    @touchend="cancelLongPress()"
+    @touchcancel="cancelLongPress()"
   >
     <template #default="slotProps">
       <FastJsonWidget 
@@ -22,13 +33,13 @@
 </template>
 
 <script setup lang="ts">
-import { type PropType } from 'vue';
+import { type PropType, ref, onMounted } from 'vue';
 import { ComponentConfig, ConfigData, ConfigMethods } from '../types';
 import * as FastJsonUI from '../utils/fast-json-ui';
 import { getComponentByType, componentMap } from './WidgetFactory';
 
 // Define props
-defineProps({
+const props = defineProps({
   config: {
     type: Object as PropType<ComponentConfig>,
     required: true
@@ -42,6 +53,72 @@ defineProps({
     default: () => ({})
   }
 });
+
+// 长按定时器
+const longPressTimer = ref<number | null>(null);
+const longPressThreshold = 500; // 长按阈值，单位毫秒
+
+/**
+ * 处理组件事件
+ * @param event 事件对象
+ * @param eventType 事件类型
+ */
+function handleEvent(event: Event | null, eventType: string) {
+  console.log(eventType);
+  // 阻止右键菜单默认行为
+  if (eventType === 'onContextMenu') {
+    event?.preventDefault();
+  }
+  
+  // 检查配置中是否有对应的事件处理函数
+  const eventHandler = props.config[eventType];
+
+  if (eventHandler) {
+    // 解析方法名和参数
+    const result = FastJsonUI.getMethodFromConfig(eventHandler,props.data,props.methods);
+
+     // 如果返回的是函数，则以组件为上下文调用
+     if (result && typeof result === 'function') {
+        result(props.config,props.data);
+      }
+  }
+}
+
+/**
+ * 处理鼠标离开事件
+ * 同时处理onMouseLeave事件和取消长按
+ */
+function onMouseLeave(event: Event) {
+  // 处理onMouseLeave事件
+  handleEvent(event, 'onMouseLeave');
+  
+  // 取消长按
+  cancelLongPress();
+}
+
+/**
+ * 开始长按计时
+ */
+function startLongPress(event: Event) {
+  // 清除可能存在的定时器
+  cancelLongPress();
+  
+  // 设置新的定时器
+  longPressTimer.value = window.setTimeout(() => {
+    handleEvent(event, 'onLongPress');
+    longPressTimer.value = null;
+  }, longPressThreshold);
+}
+
+/**
+ * 取消长按计时
+ */
+function cancelLongPress() {
+  if (longPressTimer.value !== null) {
+    clearTimeout(longPressTimer.value);
+    longPressTimer.value = null;
+  }
+}
 
 /**
  * 判断是否为自定义组件
@@ -58,6 +135,11 @@ FastJsonUI.setGlobalData('theme', 'dark');
 defineSlots<{
   default(props: { child: ComponentConfig }): any;
 }>();
+
+
+onMounted(() => {
+  handleEvent(null, 'onMounted');
+})
 </script>
 
 <style scoped>

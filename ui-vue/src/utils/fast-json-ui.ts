@@ -53,7 +53,7 @@ export const getNestedValue = (obj: any, path: string): any => {
  * @returns 解析后的值
  */
 export const getValueFromConfig = (value: any, data: ConfigData, methods: ConfigMethods): any => {
-  if (typeof value !== 'string') {
+  if (!value || typeof value !== 'string') {
     return value;
   }
 
@@ -93,18 +93,18 @@ export const getValueFromConfig = (value: any, data: ConfigData, methods: Config
 
 /**
  * 从配置中获取方法
- * @param value 配置值
+ * @param eventValue 配置值
  * @param data 数据对象
  * @param methods 方法对象
  * @returns 解析后的方法
  */
-export const getMethodFromConfig = (value: any, data: ConfigData, methods: ConfigMethods): Function | undefined => {
-  if (typeof value !== 'string') {
+export const getMethodFromConfig = (eventValue: any, data: ConfigData, methods: ConfigMethods): Function | undefined => {
+  if (!eventValue || typeof eventValue !== 'string') {
     return undefined;
   }
 
-  if (value.startsWith('@{') && value.endsWith('}')) {
-    const findMethod = RegexUtils.getMethodNameByString(value);
+  if (eventValue.startsWith('@{') && eventValue.endsWith('}')) {
+    const findMethod = RegexUtils.getMethodNameByString(eventValue);
     const method = methods[findMethod.method];
     
     if (method) {
@@ -116,7 +116,7 @@ export const getMethodFromConfig = (value: any, data: ConfigData, methods: Confi
         return arg;
       });
 
-      if (typeof method === 'function') {
+      if (method && typeof method === 'function') {
         return method(...argsList);
       }
     }
@@ -124,7 +124,7 @@ export const getMethodFromConfig = (value: any, data: ConfigData, methods: Confi
   
   // 默认回退函数
   return () => {
-    console.warn('Method not found:', value);
+    console.warn('Method not found:', eventValue);
   };
 };
 

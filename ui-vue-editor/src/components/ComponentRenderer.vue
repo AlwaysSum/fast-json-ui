@@ -1,174 +1,108 @@
 <template>
-  <div 
-    class="component-wrapper" 
-    :class="{ 'is-selected': isSelected, 'is-editor': isEditor }"
-    @click.stop="selectComponent"
+  <div
+    class="component-wrapper"
+    :class="{
+      'is-selected': config.isSelected,
+      'is-editor': config.isEditor,
+      'is-hoverable': config.isEditor && !config.isSelected,
+      'is-layout': hasChildren || hasSingleChild,
+    }"
+    @click="selectComponent"
+    @mouseenter="setHovered(true)"
+    @mouseleave="setHovered(false)"
   >
-    <div class="component-actions" v-if="isEditor && isSelected">
+    <!-- 编辑模式下的操作按钮 -->
+    <div class="component-actions" v-if="config.isEditor && config.isSelected">
       <button @click.stop="removeComponent">删除</button>
       <button @click.stop="moveUp" v-if="canMoveUp">上移</button>
       <button @click.stop="moveDown" v-if="canMoveDown">下移</button>
     </div>
-    
+
     <div class="component-content">
-      <template v-if="!isEditor">
-        <!-- 预览模式：直接使用 FastJsonWidget 渲染 -->
-        <fast-json-widget :config="config" :data="data" :methods="methods" />
-      </template>
-      <template v-else>
-        <!-- 编辑模式：根据组件类型渲染不同的编辑器 -->
-        <template v-if="config.type === 'container'">
-          <div class="container-editor" :style="containerStyle">
-            <component-renderer 
-              v-if="config.child"
-              :config="config.child" 
-              :is-editor="isEditor"
-              :path="[...path, 'child']"
-              @select="onChildSelect"
-              @update="onChildUpdate"
-              @remove="onChildRemove"
-              @move="onChildMove"
-            />
-            <div v-else class="empty-container" @click.stop="selectComponent">
-              拖拽组件到此处
-            </div>
-          </div>
-        </template>
-        
-        <template v-else-if="['row', 'column', 'stack'].includes(config.type)">
-          <div :class="`${config.type}-editor`">
-            <draggable 
-              v-model="children" 
-              :item-key="getItemKey"
-              :animation="150"
-              :group="{ name: 'components' }"
-              class="layout-container"
-              :class="config.type"
-              @change="onDragChange"
-            >
-              <template #item="{element, index}">
-                <component-renderer 
-                  :config="element" 
-                  :is-editor="isEditor"
-                  :path="[...path, `children[${index}]`]"
-                  @select="onChildSelect"
-                  @update="onChildUpdate"
-                  @remove="onChildRemove"
-                  @move="onChildMove"
-                />
-              </template>
-            </draggable>
-            <div v-if="children.length === 0" class="empty-layout" @click.stop="selectComponent">
-              拖拽组件到此处
-            </div>
-          </div>
-        </template>
-        
-        <template v-else-if="config.type === 'text'">
-          <div class="text-editor">
-            {{ config.text }}
-          </div>
-        </template>
-        
-        <template v-else-if="config.type === 'image'">
-          <div class="image-editor">
-            <img :src="config.src" :style="{ width: config.width, height: config.height }" />
-          </div>
-        </template>
-        
-        <template v-else-if="config.type === 'button'">
-          <div class="button-editor">
-            <button>{{ config.text }}</button>
-          </div>
-        </template>
-        
-        <template v-else>
-          <div class="unknown-component">
-            未知组件类型: {{ config.type }}
-          </div>
-        </template>
-      </template>
+
+      <fast-json-widget
+        :config="props.config.child"
+        :data="props.data"
+        :methods="props.methods"
+      />
+
     </div>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed, watch } from 'vue';
-import { ComponentConfig } from 'fast-json-ui-vue';
-import { FastJsonWidget } from 'fast-json-ui-vue';
-import draggable from 'vuedraggable';
+import { ref, computed, watch, PropType } from "vue";
+import { BaseConfig, callFunction, ComponentConfig, ConfigData, ConfigMethods } from "fast-json-ui-vue";
+import { FastJsonWidget } from "fast-json-ui-vue";
+import draggable from "vuedraggable";
 
 // Props
 const props = defineProps({
   config: {
-    type: Object as () => ComponentConfig,
+    type: Object as PropType<BaseConfig>,
     required: true
   },
-  isEditor: {
-    type: Boolean,
-    default: false
+  data: {
+    type: Object as PropType<ConfigData>,
+    default: () => ({})
   },
-  isSelected: {
-    type: Boolean,
-    default: false
-  },
-  path: {
-    type: Array as () => string[],
-    default: () => []
-  },
-  parentType: {
-    type: String,
-    default: ''
-  },
-  index: {
-    type: Number,
-    default: -1
-  },
-  siblingCount: {
-    type: Number,
-    default: 0
+  methods: {
+    type: Object as PropType<ConfigMethods>,
+    default: () => ({})
   }
 });
 
-// Emits
-const emit = defineEmits(['select', 'update', 'remove', 'move']);
 
-// 数据和方法（用于预览模式）
-const data = ref({});
-const methods = ref({});
+// Emits
+const emit = defineEmits(["select", "update", "remove", "move"]);
+
+// 悬停状态
+const isHovered = ref(false);
+
+// 设置悬停状态
+function setHovered(hovered: boolean) {
+  isHovered.value = hovered;
+}
 
 // 子组件列表（用于布局组件）
-const children = ref<ComponentConfig[]>(
+const childrenComponents = ref<ComponentConfig[]>(
   props.config.children ? [...props.config.children] : []
 );
 
 // 监听子组件变化
-watch(children, (newChildren: ComponentConfig[]) => {
-  if (['row', 'column', 'stack'].includes(props.config.type)) {
-    const updatedConfig = { ...props.config, children: newChildren };
-    emit('update', updatedConfig, props.path);
-  }
-}, { deep: true });
+watch(
+  childrenComponents,
+  (newChildren: ComponentConfig[]) => {
+    if (hasChildren.value) {
+      const updatedConfig = { ...props.config, children: newChildren };
+      // emit("update", updatedConfig, props.config.path);
+      callFunction(props.config.onUpdate, {
+        config: updatedConfig,
+        path: props.config.path,
+      }, props.methods);
+    }
+  },
+  { deep: true }
+);
 
-// 容器样式
-const containerStyle = computed(() => {
-  if (props.config.type !== 'container') return {};
-  
-  return {
-    backgroundColor: props.config.color || 'transparent',
-    padding: props.config.padding || '0',
-    margin: props.config.margin || '0'
-  };
+// 判断是否有多个子组件布局
+const hasChildren = computed(() => {
+  return Array.isArray(props.config.children);
+});
+
+// 判断是否有单个子组件布局
+const hasSingleChild = computed(() => {
+  return "child" in props.config;
 });
 
 // 是否可以上移
 const canMoveUp = computed(() => {
-  return props.index > 0;
+  return props.config.index > 0;
 });
 
 // 是否可以下移
 const canMoveDown = computed(() => {
-  return props.index >= 0 && props.index < props.siblingCount - 1;
+  return props.config.index >= 0 && props.config.index < props.config.siblingCount - 1;
 });
 
 // 获取项目键
@@ -178,46 +112,76 @@ function getItemKey(item: ComponentConfig) {
 
 // 选择组件
 function selectComponent() {
-  emit('select', props.config, props.path);
+  // emit("select", props.config, props.config.path);
+  callFunction(props.config.onTap, {
+    config: props.config,
+    path: props.config.path,
+  }, props.methods);
 }
 
 // 移除组件
 function removeComponent() {
-  emit('remove', props.path);
+  // emit("remove", props.config.path);
+  callFunction(props.config.onRemove, {
+    path: props.config.path,
+  }, props.methods);
 }
 
 // 上移组件
 function moveUp() {
   if (canMoveUp.value) {
-    emit('move', props.path, props.index - 1);
+    // emit("move", props.config.path, props.config.index - 1);
+    callFunction(props.config.onMove, {
+      path: props.config.path,
+      index: props.config.index - 1,
+    }, props.methods);
   }
 }
 
 // 下移组件
 function moveDown() {
   if (canMoveDown.value) {
-    emit('move', props.path, props.index + 1);
+    // emit("move", props.config.path, props.config.index + 1);
+    callFunction(props.config.onMove, {
+      path: props.config.path,
+      index: props.config.index + 1,
+    }, props.methods);
   }
 }
 
 // 子组件选择
 function onChildSelect(component: ComponentConfig, path: string[]) {
-  emit('select', component, path);
+  // emit("select", component, path);
+  callFunction(props.config.onTap, {
+    config: component,
+    path: path,
+  }, props.methods);
 }
 
 // 子组件更新
 function onChildUpdate(component: ComponentConfig, path: string[]) {
-  emit('update', component, path);
+  // emit("update", component, path);
+  callFunction(props.config.onUpdate, {
+    config: component,
+    path: path,
+  }, props.methods);
 }
 
 // 子组件移除
 function onChildRemove(path: string[]) {
-  emit('remove', path);
+  // emit("remove", path);
+  callFunction(props.config.onRemove, {
+    path: path,
+  }, props.methods);
 }
 
 // 子组件移动
 function onChildMove(path: string[], newIndex: number) {
-  emit('move', path, newIndex);
+  // emit("move", path, newIndex);
+  callFunction(props.config.onMove, {
+    path: path,
+    index: newIndex,
+  }, props.methods);
 }
 
 // 拖拽变化
@@ -227,14 +191,18 @@ function onDragChange(event: any) {
     // 处理添加的组件
     const newComponent = event.added.element;
     const index = event.added.newIndex;
-    
+
     // 更新子组件列表
     if (!props.config.children) {
       props.config.children = [];
     }
-    
+
     props.config.children.splice(index, 0, newComponent);
-    emit('update', props.config, props.path);
+    // emit("update", props.config, props.config.path);
+    callFunction(props.config.onUpdate, {
+      config: props.config,
+      path: props.config.path,
+    }, props.methods);
   }
 }
 </script>
@@ -244,18 +212,46 @@ function onDragChange(event: any) {
   position: relative;
   margin: 4px;
   min-height: 24px;
+  transition: all 0.2s ease;
 }
 
 .is-editor {
   border: 1px dashed transparent;
 }
 
-.is-editor:hover {
-  border-color: #ddd;
+/* 使用伪元素为非布局组件创建遮罩层 */
+.is-editor:not(.is-layout) .component-content::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 1;
+  cursor: pointer;
+  border: 1px dashed transparent;
+  transition: all 0.2s ease;
+}
+
+/* 悬停效果 */
+.is-hoverable:hover,
+.is-hoverable:not(.is-layout):hover .component-content::before {
+  border-color: #40a9ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
 }
 
 .is-selected {
   border-color: #1890ff !important;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2) !important;
+}
+
+/* 为不同类型的组件添加特定的悬停效果 */
+.is-editor:not(.is-layout) .fast-json-widget__text:hover,
+.is-editor:not(.is-layout) .fast-json-widget__button:hover,
+.is-editor:not(.is-layout) .fast-json-widget__image:hover,
+.is-editor:not(.is-layout) .fast-json-widget__input:hover,
+.is-editor:not(.is-layout) .fast-json-widget__select:hover {
+  outline: 1px dashed #40a9ff;
 }
 
 .component-actions {
@@ -281,18 +277,23 @@ function onDragChange(event: any) {
 }
 
 .component-content {
+  position: relative;
   width: 100%;
   height: 100%;
 }
 
-.container-editor {
+/* 确保子组件容器在覆盖层之上 */
+.layout-container {
+  position: relative;
+  z-index: 2;
+  display: flex;
   min-height: 50px;
-  padding: 8px;
-  border-radius: 4px;
 }
 
 .empty-container,
 .empty-layout {
+  position: relative;
+  z-index: 2;
   display: flex;
   justify-content: center;
   align-items: center;
@@ -302,11 +303,6 @@ function onDragChange(event: any) {
   border: 1px dashed #ddd;
   border-radius: 4px;
   color: #999;
-}
-
-.layout-container {
-  display: flex;
-  min-height: 50px;
 }
 
 .layout-container.row {
@@ -329,18 +325,4 @@ function onDragChange(event: any) {
   width: 100%;
   height: 100%;
 }
-
-.text-editor,
-.button-editor,
-.image-editor {
-  padding: 4px;
-}
-
-.unknown-component {
-  padding: 8px;
-  background-color: #fff0f0;
-  border: 1px solid #ffccc7;
-  border-radius: 4px;
-  color: #f5222d;
-}
-</style> 
+</style>

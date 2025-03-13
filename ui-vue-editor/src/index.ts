@@ -22,4 +22,4 @@ const plugin = {
 export { plugin as FastJsonUiEditor };
 
 // Default export
-export default plugin; 
+export default plugin;

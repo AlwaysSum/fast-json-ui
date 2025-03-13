@@ -13,6 +13,7 @@ export default defineConfig({
   },
   build: {
     sourcemap: true,
+    cssCodeSplit: false,
     lib: {
       entry: path.resolve(__dirname, "src/index.ts"),
       name: "FastJsonUiEditor",
@@ -32,5 +33,6 @@ export default defineConfig({
         exports: "named",
       },
     },
+    emptyOutDir: true,
   },
 });
