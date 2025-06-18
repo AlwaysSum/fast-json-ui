@@ -1,47 +1,47 @@
 <script setup lang="ts">
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import BasicExample from './examples/BasicExample.vue';
 import AdvancedExample from './examples/AdvancedExample.vue';
 import EditorExample from './examples/EditorExample.vue';
 
 const activeTab = ref<string>('basic');
+const isEditorMode = computed(() => activeTab.value === 'editor');
 </script>
 
 <template>
-  <div class="app">
-    <header>
-      <h1>Fast-JSON-UI-Vue Demo</h1>
-      <p>A Vue 3 library for converting JSON to UI components</p>
+  <div class="admin-app" :class="{ 'editor-mode': isEditorMode }">
+    <header class="admin-header">
+      <div class="logo">Fast-JSON-UI-Vue</div>
+      <div class="desc">A Vue 3 library for converting JSON to UI components</div>
     </header>
-    
-    <nav>
-      <button 
-        :class="{ active: activeTab === 'basic' }" 
-        @click="activeTab = 'basic'"
-      >
-        Basic Example
-      </button>
-      <button 
-        :class="{ active: activeTab === 'advanced' }" 
-        @click="activeTab = 'advanced'"
-      >
-        Advanced Example
-      </button>
-      <button 
-        :class="{ active: activeTab === 'editor' }" 
-        @click="activeTab = 'editor'"
-      >
-        UI Editor
-      </button>
-    </nav>
-    
-    <main>
-      <BasicExample v-if="activeTab === 'basic'" />
-      <AdvancedExample v-else-if="activeTab === 'advanced'" />
-      <EditorExample v-else-if="activeTab === 'editor'" />
-    </main>
-    
-    <footer>
+    <div class="admin-body">
+      <aside class="admin-sidebar">
+        <button 
+          :class="{ active: activeTab === 'basic' }" 
+          @click="activeTab = 'basic'"
+        >
+          Basic Example
+        </button>
+        <button 
+          :class="{ active: activeTab === 'advanced' }" 
+          @click="activeTab = 'advanced'"
+        >
+          Advanced Example
+        </button>
+        <button 
+          :class="{ active: activeTab === 'editor' }" 
+          @click="activeTab = 'editor'"
+        >
+          UI Editor
+        </button>
+      </aside>
+      <main class="admin-content" :class="{ 'editor-mode': isEditorMode }">
+        <BasicExample v-if="activeTab === 'basic'" />
+        <AdvancedExample v-else-if="activeTab === 'advanced'" />
+        <EditorExample v-else-if="activeTab === 'editor'" />
+      </main>
+    </div>
+    <footer v-if="!isEditorMode" class="admin-footer">
       <p>Fast-JSON-UI-Vue - MIT License</p>
     </footer>
   </div>
@@ -66,60 +66,120 @@ body {
   min-height: 100vh;
 }
 
-.app {
-  max-width: 1280px;
-  margin: 0 auto;
-  padding: 2rem;
+.admin-app {
+  min-height: 100vh;
+  width: 100vw;
+  background: #f5f6fa;
 }
 
-header {
-  text-align: center;
-  margin-bottom: 2rem;
-}
-
-h1 {
-  font-size: 2.5rem;
-  margin-bottom: 0.5rem;
-}
-
-nav {
+.admin-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 64px;
+  background: #222e3c;
+  color: #fff;
   display: flex;
-  justify-content: center;
-  gap: 1rem;
-  margin-bottom: 2rem;
+  align-items: center;
+  padding: 0 32px;
+  justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  z-index: 10;
+}
+.admin-header .logo {
+  font-size: 1.5rem;
+  font-weight: bold;
+}
+.admin-header .desc {
+  font-size: 1rem;
+  color: #b0b8c9;
 }
 
-nav button {
-  padding: 0.6rem 1.2rem;
+.admin-body {
+  display: flex;
+  min-height: 100vh;
+  padding-top: 64px;
+}
+
+.admin-sidebar {
+  position: fixed;
+  top: 64px;
+  left: 0;
+  width: 200px;
+  height: calc(100vh - 64px);
+  background: #fff;
+  border-right: 1px solid #e5e6eb;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 0;
+  gap: 12px;
+  box-shadow: 1px 0 0 #f0f0f0;
+  z-index: 9;
+}
+.admin-sidebar button {
+  padding: 0.8rem 1.2rem;
   font-size: 1rem;
   font-weight: 500;
-  background-color: #f9f9f9;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: none;
+  border: none;
+  border-left: 4px solid transparent;
+  text-align: left;
+  color: #222e3c;
   cursor: pointer;
   transition: all 0.2s;
 }
-
-nav button:hover {
-  background-color: #eee;
+.admin-sidebar button.active {
+  background: #e6f7ff;
+  border-left: 4px solid #1890ff;
+  color: #1890ff;
+}
+.admin-sidebar button:hover {
+  background: #f5faff;
 }
 
-nav button.active {
-  background-color: #4CAF50;
-  color: white;
-  border-color: #4CAF50;
+.admin-content {
+  margin-left: 200px;
+  margin-top: 64px;
+  flex: 1;
+  padding: 32px;
+  min-width: 0;
+  min-height: 0;
+  background: #fff;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+  height: calc(100vh - 64px);
+  overflow: auto;
+}
+.admin-content.editor-mode {
+  padding: 0;
+  background: #fff;
+  height: calc(100vh - 64px);
 }
 
-main {
-  margin-bottom: 2rem;
-}
-
-footer {
+.admin-footer {
   text-align: center;
   color: #888;
   font-size: 0.9rem;
-  margin-top: 2rem;
-  padding-top: 1rem;
+  margin-top: 0;
+  padding: 1rem 0;
   border-top: 1px solid #eee;
+  background: #fff;
+  position: fixed;
+  left: 200px;
+  right: 0;
+  bottom: 0;
+  z-index: 8;
+}
+
+/* 兼容编辑模式全屏 */
+.admin-app.editor-mode .admin-content.editor-mode {
+  height: calc(100vh - 64px);
+  min-height: 0;
+  padding: 0;
+}
+.admin-app.editor-mode .admin-sidebar {
+  z-index: 9;
 }
 </style>
