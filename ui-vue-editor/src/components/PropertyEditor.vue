@@ -18,7 +18,7 @@
 
         <!-- 字符串属性 -->
         <input
-          v-if="property.type === PropertyType.STRING"
+          v-if="property.type === 'string'"
           type="text"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
@@ -27,7 +27,7 @@
 
         <!-- 数字属性 -->
         <input
-          v-else-if="property.type === PropertyType.NUMBER"
+          v-else-if="property.type === 'number'"
           type="number"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, Number((e.target as HTMLInputElement).value))"
@@ -36,7 +36,7 @@
 
         <!-- 布尔属性 -->
         <input
-          v-else-if="property.type === PropertyType.BOOLEAN"
+          v-else-if="property.type === 'boolean'"
           type="checkbox"
           :checked="component[property.name]"
           @change="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).checked)"
@@ -45,7 +45,7 @@
 
         <!-- 选择属性 -->
         <select
-          v-else-if="property.type === PropertyType.SELECT"
+          v-else-if="property.type === 'select'"
           :value="component[property.name]"
           @change="(e: any) => updateProperty(property.name, (e.target as HTMLSelectElement).value)"
           class="property-select"
@@ -61,7 +61,7 @@
 
         <!-- 颜色属性 -->
         <input
-          v-else-if="property.type === PropertyType.COLOR"
+          v-else-if="property.type === 'color'"
           type="color"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
@@ -70,7 +70,7 @@
 
         <!-- 表达式属性 -->
         <textarea
-          v-else-if="property.type === PropertyType.EXPRESSION"
+          v-else-if="property.type === 'expression'"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
           class="property-textarea"
@@ -79,7 +79,7 @@
 
         <!-- 方法属性 -->
         <textarea
-          v-else-if="property.type === PropertyType.METHOD"
+          v-else-if="property.type === 'method'"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
           class="property-textarea"
@@ -120,7 +120,6 @@
 <script lang="ts" setup>
 import { ref, computed } from "vue";
 import { ComponentConfig } from "fast-json-ui-vue";
-import { ComponentMeta, PropertyType } from "../types";
 import { WidgetFactory } from "fast-json-ui-vue";
 import AddComponentDialog from "./AddComponentDialog.vue";
 
@@ -131,7 +130,7 @@ const props = defineProps({
     required: true,
   },
   meta: {
-    type: Object as () => ComponentMeta | undefined,
+    type: Object as () => WidgetFactory.WidgetMeta | undefined,
     default: undefined,
   },
 });

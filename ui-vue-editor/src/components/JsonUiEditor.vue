@@ -118,7 +118,7 @@ import {
 } from "vue";
 import ComponentRenderer from "./ComponentRenderer.vue";
 import PropertyEditor from "./PropertyEditor.vue";
-import { ComponentCategory, ComponentConfig } from "../types";
+import { ComponentConfig } from "../types";
 import { WidgetFactory } from "fast-json-ui-vue";
 import { registerComponent } from "fast-json-ui-vue";
 import HierarchyPanel from "./HierarchyPanel.vue";
@@ -128,7 +128,7 @@ registerComponent("ComponentRenderer", ComponentRenderer, {
   type: "ComponentRenderer",
   name: "组件渲染器",
   icon: "🧩",
-  category: "internal",
+  category: "custom",
   defaultConfig: {
     type: "ComponentRenderer",
     child: { type: "text", text: "内容" },
@@ -268,54 +268,16 @@ const globalFunctions = ref<Record<string, any>>({});
 // 新增：当前树选中路径
 const selectedTreePath = ref<string[]>([]);
 
-// 计算属性
-const categories = computed(() => {
-  const cats = new Set<string>();
-  Object.values(WidgetFactory.getWidgetRegistry() as any).forEach(
-    (reg: any) => {
-      cats.add(reg.metadata.category || "other");
-    }
-  );
-  return Array.from(cats);
-});
-
-// 方法
-function getCategoryName(category: ComponentCategory): string {
-  switch (category) {
-    case ComponentCategory.BASIC:
-      return "基础组件";
-    case ComponentCategory.LAYOUT:
-      return "布局组件";
-    case ComponentCategory.FORM:
-      return "表单组件";
-    case ComponentCategory.CUSTOM:
-      return "自定义组件";
-    default:
-      return "其他组件";
-  }
-}
-
-function getComponentsByCategory(category: string) {
-  return Object.values(WidgetFactory.getWidgetRegistry() as any).filter(
-    (reg: any) => reg.metadata.category === category
-  );
-}
-
 function getComponentMetaByType(type: string) {
+  console.log(
+    "WidgetFactory.getWidgetRegistry()",
+    WidgetFactory.getWidgetRegistry()
+  );
   return (
     Object.values(WidgetFactory.getWidgetRegistry() as any).find(
       (reg: any) => reg.metadata.type === type
     ) as any
   )?.metadata;
-}
-
-function onDragStart(event: DragEvent, component: WidgetFactory.WidgetMeta) {
-  if (event.dataTransfer) {
-    event.dataTransfer.setData(
-      "application/json",
-      JSON.stringify(component.defaultConfig)
-    );
-  }
 }
 
 function onDrop(event: DragEvent) {

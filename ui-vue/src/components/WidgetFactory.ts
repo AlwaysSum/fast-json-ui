@@ -21,21 +21,61 @@ declare global {
   }
 }
 
+/**
+ * 组件分类
+ */
+export type ComponentCategory =
+  | "basic"
+  | "layout"
+  | "form"
+  | "custom"
+  | "other";
+
+/**
+ * 属性类型
+ */
+export type PropertyType =
+  | "string"
+  | "number"
+  | "boolean"
+  | "select"
+  | "color"
+  | "icon"
+  | "expression"
+  | "children"
+  | "child"
+  | "array"
+  | "object"
+  | "method";
+
+/**
+ * 属性元数据
+ */
+export interface PropertyMeta {
+  name: string;
+  label: string;
+  type: PropertyType;
+  defaultValue?: any;
+  options?: { label: string; value: any }[];
+  required?: boolean;
+}
+
+/**
+ * 组件配置
+ */
+export interface ComponentConfig {
+  type: string;
+  [key: string]: any;
+}
+
 // 新增：组件注册表，包含组件和元数据
 export interface WidgetMeta {
   type: string;
   name: string;
   icon?: string;
-  category?: string;
-  defaultConfig: Record<string, any>;
-  properties: Array<{
-    name: string;
-    label: string;
-    type: string;
-    defaultValue?: any;
-    required?: boolean;
-    options?: Array<{ label: string; value: any }>;
-  }>;
+  category: ComponentCategory;
+  defaultConfig: ComponentConfig;
+  properties: PropertyMeta[];
 }
 
 export interface WidgetRegistration {
@@ -46,7 +86,9 @@ export interface WidgetRegistration {
 const widgetRegistry: Record<string, WidgetRegistration> = {};
 
 // 自动扫描 widgets 目录下所有 .vue 和 .metadata.ts 文件（递归子文件夹）
-const componentModules = import.meta.glob("./widgets/**/*.vue", { eager: true });
+const componentModules = import.meta.glob("./widgets/**/*.vue", {
+  eager: true,
+});
 const metadataModules = import.meta.glob("./widgets/**/*.metadata.ts", {
   eager: true,
 });
@@ -70,6 +112,7 @@ export const componentMap: Record<string, Component> = Object.fromEntries(
   Object.entries(widgetRegistry).map(([type, reg]) => [type, reg.component])
 );
 
+console.log("@@@WidgetFactory", widgetRegistry);
 /**
  * 获取组件类型
  * @param type 组件类型

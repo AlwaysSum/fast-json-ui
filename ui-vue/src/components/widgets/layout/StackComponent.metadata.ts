@@ -44,7 +44,7 @@ export const metadata: WidgetMeta = {
     { name: 'boxShadow', label: '阴影', type: 'string', defaultValue: '' },
     { name: 'width', label: '宽度', type: 'string', defaultValue: '' },
     { name: 'height', label: '高度', type: 'string', defaultValue: '' },
-    { name: 'zIndexMap', label: '子项zIndex映射', type: 'object', defaultValue: {} }
+    { name: 'zIndexMap', label: '子项zIndex映射', type: 'array', defaultValue: {} }
   ]
 };
 
