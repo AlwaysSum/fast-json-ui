@@ -118,13 +118,23 @@ import {
 } from "vue";
 import ComponentRenderer from "./ComponentRenderer.vue";
 import PropertyEditor from "./PropertyEditor.vue";
-import { ComponentCategory, ComponentConfig, ComponentMeta } from "../types";
-import { availableComponents } from "../config/config";
+import { ComponentCategory, ComponentConfig } from "../types";
+import { WidgetFactory } from "fast-json-ui-vue";
 import { registerComponent } from "fast-json-ui-vue";
 import HierarchyPanel from "./HierarchyPanel.vue";
 
 //注册组件
-registerComponent("ComponentRenderer", ComponentRenderer);
+registerComponent("ComponentRenderer", ComponentRenderer, {
+  type: "ComponentRenderer",
+  name: "组件渲染器",
+  icon: "🧩",
+  category: "internal",
+  defaultConfig: {
+    type: "ComponentRenderer",
+    child: { type: "text", text: "内容" },
+  },
+  properties: [{ name: "child", label: "子组件", type: "child" }],
+});
 
 // 全局变量编辑器组件
 const GlobalVariablesEditor = defineComponent({
@@ -260,8 +270,12 @@ const selectedTreePath = ref<string[]>([]);
 
 // 计算属性
 const categories = computed(() => {
-  const cats = new Set<ComponentCategory>();
-  availableComponents.forEach((comp: ComponentMeta) => cats.add(comp.category));
+  const cats = new Set<string>();
+  Object.values(WidgetFactory.getWidgetRegistry() as any).forEach(
+    (reg: any) => {
+      cats.add(reg.metadata.category || "other");
+    }
+  );
   return Array.from(cats);
 });
 
@@ -281,17 +295,21 @@ function getCategoryName(category: ComponentCategory): string {
   }
 }
 
-function getComponentsByCategory(category: ComponentCategory) {
-  return availableComponents.filter(
-    (comp: ComponentMeta) => comp.category === category
+function getComponentsByCategory(category: string) {
+  return Object.values(WidgetFactory.getWidgetRegistry() as any).filter(
+    (reg: any) => reg.metadata.category === category
   );
 }
 
-function getComponentMetaByType(type: string): ComponentMeta | undefined {
-  return availableComponents.find((comp: ComponentMeta) => comp.type === type);
+function getComponentMetaByType(type: string) {
+  return (
+    Object.values(WidgetFactory.getWidgetRegistry() as any).find(
+      (reg: any) => reg.metadata.type === type
+    ) as any
+  )?.metadata;
 }
 
-function onDragStart(event: DragEvent, component: ComponentMeta) {
+function onDragStart(event: DragEvent, component: WidgetFactory.WidgetMeta) {
   if (event.dataTransfer) {
     event.dataTransfer.setData(
       "application/json",
@@ -437,7 +455,7 @@ function moveComponent(fromPath: string[], toPath: string[]) {
     if (key === "children") {
       const idx = parseInt(fromPath[i + 1]);
       if (!isNaN(idx)) {
-        fromParent = fromParent;
+        fromParent = fromParent.children[idx];
         fromIndex = idx;
         component = fromParent.children[idx];
         break;
@@ -451,7 +469,7 @@ function moveComponent(fromPath: string[], toPath: string[]) {
     if (key === "children") {
       const idx = parseInt(toPath[i + 1]);
       if (!isNaN(idx)) {
-        toParent = toParent;
+        toParent = toParent.children[idx];
         toIndex = idx;
         break;
       }

@@ -1,32 +1,34 @@
 <template>
-  <button 
+  <button
     :class="[
       'fast-json-button',
       `type-${getValueFromConfig(config.type) || 'primary'}`,
-      `size-${getValueFromConfig(config.size) || 'medium'}`
+      `size-${getValueFromConfig(config.size) || 'medium'}`,
     ]"
     :style="{
       backgroundColor: getValueFromConfig(config.backgroundColor),
       color: getValueFromConfig(config.color),
       borderRadius: getValueFromConfig(config.borderRadius),
       width: getValueFromConfig(config.width),
-      height: getValueFromConfig(config.height)
+      height: getValueFromConfig(config.height),
     }"
     :disabled="getValueFromConfig(config.disabled)"
   >
-    <span v-if="config.icon" class="button-icon">{{ getValueFromConfig(config.icon) }}</span>
+    <span v-if="config.icon" class="button-icon">{{
+      getValueFromConfig(config.icon)
+    }}</span>
     <span class="button-text">{{ getValueFromConfig(config.text) }}</span>
   </button>
 </template>
 
 <script setup lang="ts">
-import { defineProps } from 'vue';
-import * as FastJsonUI from '../../utils/fast-json-ui';
+import { defineProps } from "vue";
+import * as FastJsonUI from "../../utils/fast-json-ui";
 
 const props = defineProps({
   config: { type: Object, required: true },
   data: { type: Object, default: () => ({}) },
-  methods: { type: Object, default: () => ({}) }
+  methods: { type: Object, default: () => ({}) },
 });
 
 const getValueFromConfig = (value: any): any => {
@@ -122,4 +124,4 @@ const getValueFromConfig = (value: any): any => {
 .button-text {
   line-height: 1;
 }
-</style> 
+</style>

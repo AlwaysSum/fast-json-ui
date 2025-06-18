@@ -1,15 +1,13 @@
 <template>
   <div class="property-editor">
-    <div v-if="!meta" class="no-properties">
-      没有可编辑的属性
-    </div>
+    <div v-if="!meta" class="no-properties">没有可编辑的属性</div>
     <template v-else>
       <div class="property-type">
         <strong>组件类型:</strong> {{ meta.name }}
       </div>
-      
-      <div 
-        v-for="property in meta.properties" 
+
+      <div
+        v-for="property in meta.properties"
         :key="property.name"
         class="property-item"
       >
@@ -17,122 +15,129 @@
           {{ property.label }}
           <span class="required" v-if="property.required">*</span>
         </div>
-        
+
         <!-- 字符串属性 -->
-        <input 
-          v-if="property.type === PropertyType.STRING" 
-          type="text" 
+        <input
+          v-if="property.type === PropertyType.STRING"
+          type="text"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
           class="property-input"
         />
-        
+
         <!-- 数字属性 -->
-        <input 
-          v-else-if="property.type === PropertyType.NUMBER" 
-          type="number" 
+        <input
+          v-else-if="property.type === PropertyType.NUMBER"
+          type="number"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, Number((e.target as HTMLInputElement).value))"
           class="property-input"
         />
-        
+
         <!-- 布尔属性 -->
-        <input 
-          v-else-if="property.type === PropertyType.BOOLEAN" 
-          type="checkbox" 
+        <input
+          v-else-if="property.type === PropertyType.BOOLEAN"
+          type="checkbox"
           :checked="component[property.name]"
           @change="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).checked)"
           class="property-checkbox"
         />
-        
+
         <!-- 选择属性 -->
-        <select 
-          v-else-if="property.type === PropertyType.SELECT" 
+        <select
+          v-else-if="property.type === PropertyType.SELECT"
           :value="component[property.name]"
           @change="(e: any) => updateProperty(property.name, (e.target as HTMLSelectElement).value)"
           class="property-select"
         >
-          <option 
-            v-for="option in property.options" 
-            :key="option.value" 
+          <option
+            v-for="option in property.options"
+            :key="option.value"
             :value="option.value"
           >
             {{ option.label }}
           </option>
         </select>
-        
+
         <!-- 颜色属性 -->
-        <input 
-          v-else-if="property.type === PropertyType.COLOR" 
-          type="color" 
+        <input
+          v-else-if="property.type === PropertyType.COLOR"
+          type="color"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
           class="property-color"
         />
-        
+
         <!-- 表达式属性 -->
-        <textarea 
-          v-else-if="property.type === PropertyType.EXPRESSION" 
+        <textarea
+          v-else-if="property.type === PropertyType.EXPRESSION"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
           class="property-textarea"
           rows="3"
         ></textarea>
-        
+
         <!-- 方法属性 -->
-        <textarea 
-          v-else-if="property.type === PropertyType.METHOD" 
+        <textarea
+          v-else-if="property.type === PropertyType.METHOD"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
           class="property-textarea"
           rows="3"
           placeholder="输入方法名称"
         ></textarea>
-        
+
         <!-- 默认输入 -->
-        <input 
+        <input
           v-else
-          type="text" 
+          type="text"
           :value="component[property.name]"
           @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
           class="property-input"
         />
       </div>
-      
+
       <!-- 特殊属性：子组件 -->
       <div v-if="hasChildren" class="property-item">
         <div class="property-label">子组件</div>
         <div class="children-count">
           {{ childrenCount }} 个子组件
-          <button class="add-child-btn" @click="openAddDialog">添加子组件</button>
+          <button class="add-child-btn" @click="openAddDialog">
+            添加子组件
+          </button>
         </div>
       </div>
     </template>
-    <AddComponentDialog v-if="showAddDialog" :show="showAddDialog" @close="closeAddDialog" @add="handleAddComponent" />
+    <AddComponentDialog
+      v-if="showAddDialog"
+      :show="showAddDialog"
+      @close="closeAddDialog"
+      @add="handleAddComponent"
+    />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { ComponentConfig } from 'fast-json-ui-vue';
-import { ComponentMeta, PropertyType } from '../types';
-import { availableComponents } from '../config/config';
-import AddComponentDialog from './AddComponentDialog.vue';
+import { ref, computed } from "vue";
+import { ComponentConfig } from "fast-json-ui-vue";
+import { ComponentMeta, PropertyType } from "../types";
+import { WidgetFactory } from "fast-json-ui-vue";
+import AddComponentDialog from "./AddComponentDialog.vue";
 
 // Props
 const props = defineProps({
   component: {
     type: Object as () => ComponentConfig,
-    required: true
+    required: true,
   },
   meta: {
     type: Object as () => ComponentMeta | undefined,
-    default: undefined
-  }
+    default: undefined,
+  },
 });
 
 // Emits
-const emit = defineEmits(['update']);
+const emit = defineEmits(["update"]);
 
 // 是否有子组件
 const hasChildren = computed(() => {
@@ -158,21 +163,27 @@ function closeAddDialog() {
   showAddDialog.value = false;
 }
 function handleAddComponent(type: string) {
-  const metaToAdd = availableComponents.find(c => c.type === type);
+  const metaToAdd = (
+    Object.values(WidgetFactory.getWidgetRegistry()) as any[]
+  ).find((reg) => reg.metadata.type === type)?.metadata;
   if (metaToAdd) {
     if (Array.isArray(props.component.children)) {
-      props.component.children.push(JSON.parse(JSON.stringify(metaToAdd.defaultConfig)));
+      props.component.children.push(
+        JSON.parse(JSON.stringify(metaToAdd.defaultConfig))
+      );
     } else if (props.component.child === undefined) {
-      props.component.child = JSON.parse(JSON.stringify(metaToAdd.defaultConfig));
+      props.component.child = JSON.parse(
+        JSON.stringify(metaToAdd.defaultConfig)
+      );
     }
-    emit('update', '', '');
+    emit("update", "", "");
   }
   closeAddDialog();
 }
 
 // 更新属性
 function updateProperty(name: string, value: any) {
-  emit('update', props.component, name, value);
+  emit("update", props.component, name, value);
 }
 </script>
 
@@ -256,4 +267,4 @@ function updateProperty(name: string, value: any) {
 .add-child-btn:hover {
   background: #e6f7ff;
 }
-</style> 
+</style>

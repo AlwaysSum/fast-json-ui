@@ -17,7 +17,9 @@
               :class="{ selected: selectedType === component.type }"
               @click="select(component.type)"
             >
-              <span class="component-icon" v-if="component.icon">{{ component.icon }}</span>
+              <span class="component-icon" v-if="component.icon">{{
+                component.icon
+              }}</span>
               <span class="component-name">{{ component.name }}</span>
             </div>
           </div>
@@ -32,44 +34,63 @@
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from 'vue';
-import { availableComponents } from '../config/config';
-import { ComponentCategory } from '../types';
+import { ref, computed } from "vue";
+import { WidgetFactory } from "fast-json-ui-vue";
 
 const props = defineProps<{ show: boolean }>();
-const emit = defineEmits(['close', 'add']);
+const emit = defineEmits(["close", "add"]);
 
-const selectedType = ref('');
+const selectedType = ref("");
 function select(type: string) {
   selectedType.value = type;
 }
 function add() {
-  emit('add', selectedType.value);
-  selectedType.value = '';
+  emit("add", selectedType.value);
+  selectedType.value = "";
 }
 
 const categories = computed(() => {
-  const set = new Set(availableComponents.map(c => c.category));
+  const set = new Set<string>();
+  Object.values(WidgetFactory.getWidgetRegistry()).forEach((reg: any) => {
+    if (reg && reg.metadata && reg.metadata.category) {
+      set.add(reg.metadata.category);
+    } else {
+      set.add("other");
+    }
+  });
   return Array.from(set);
 });
-function getCategoryName(category: ComponentCategory) {
+function getCategoryName(category: string) {
   switch (category) {
-    case ComponentCategory.BASIC: return '基础组件';
-    case ComponentCategory.LAYOUT: return '布局组件';
-    case ComponentCategory.FORM: return '表单组件';
-    default: return category;
+    case "basic":
+      return "基础组件";
+    case "layout":
+      return "布局组件";
+    case "form":
+      return "表单组件";
+    case "custom":
+      return "自定义组件";
+    default:
+      return category;
   }
 }
-function getComponentsByCategory(category: ComponentCategory) {
-  return availableComponents.filter(c => c.category === category);
+function getComponentsByCategory(category: string) {
+  return Object.values(WidgetFactory.getWidgetRegistry())
+    .filter(
+      (reg: any) => reg && reg.metadata && reg.metadata.category === category
+    )
+    .map((reg: any) => reg.metadata);
 }
 </script>
 
 <style scoped>
 .add-component-dialog-mask {
   position: fixed;
-  left: 0; top: 0; right: 0; bottom: 0;
-  background: rgba(0,0,0,0.18);
+  left: 0;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.18);
   z-index: 1000;
   display: flex;
   align-items: center;
@@ -78,7 +99,7 @@ function getComponentsByCategory(category: ComponentCategory) {
 .add-component-dialog {
   background: #fff;
   border-radius: 6px;
-  box-shadow: 0 4px 24px rgba(0,0,0,0.13);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.13);
   padding: 24px 28px 18px 28px;
   min-width: 340px;
   display: flex;
@@ -147,11 +168,12 @@ function getComponentsByCategory(category: ComponentCategory) {
   margin-bottom: 4px;
   transition: background 0.18s, border 0.18s;
 }
-.component-item.selected, .component-item:hover {
+.component-item.selected,
+.component-item:hover {
   background-color: #e6f7ff;
   border-color: #1890ff;
 }
 .component-icon {
   margin-right: 4px;
 }
-</style> 
+</style>

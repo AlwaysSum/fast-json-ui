@@ -48,26 +48,30 @@
 
 <script lang="ts" setup>
 import { ref, computed, watch, PropType } from "vue";
-import { BaseConfig, callFunction, ComponentConfig, ConfigData, ConfigMethods } from "fast-json-ui-vue";
+import {
+  BaseConfig,
+  callFunction,
+  ComponentConfig,
+  ConfigData,
+  ConfigMethods,
+} from "fast-json-ui-vue";
 import { FastJsonWidget } from "fast-json-ui-vue";
-
 
 // Props
 const props = defineProps({
   config: {
     type: Object as PropType<BaseConfig>,
-    required: true
+    required: true,
   },
   data: {
     type: Object as PropType<ConfigData>,
-    default: () => ({})
+    default: () => ({}),
   },
   methods: {
     type: Object as PropType<ConfigMethods>,
-    default: () => ({})
-  }
+    default: () => ({}),
+  },
 });
-
 
 // Emits
 const emit = defineEmits(["select", "update", "remove", "move"]);
@@ -95,10 +99,14 @@ watch(
     if (hasChildren.value) {
       const updatedConfig = { ...props.config, children: newChildren };
       // emit("update", updatedConfig, props.config.path);
-      callFunction(props.config.onUpdate, {
-        config: updatedConfig,
-        path: props.config.path,
-      }, props.methods);
+      callFunction(
+        props.config.onUpdate,
+        {
+          config: updatedConfig,
+          path: props.config.path,
+        },
+        props.methods
+      );
     }
   },
   { deep: true }
@@ -121,7 +129,10 @@ const canMoveUp = computed(() => {
 
 // 是否可以下移
 const canMoveDown = computed(() => {
-  return props.config.index >= 0 && props.config.index < props.config.siblingCount - 1;
+  return (
+    props.config.index >= 0 &&
+    props.config.index < props.config.siblingCount - 1
+  );
 });
 
 // 获取项目键
@@ -134,16 +145,24 @@ function selectComponent() {
   // 只在编辑模式下允许选中
   if (props.config.isEditor) {
     // 如果当前是 ComponentRenderer，选中 child
-    if (props.config.type === 'ComponentRenderer' && props.config.child) {
-      callFunction(props.config.onTap, {
-        config: props.config.child,
-        path: props.config.path,
-      }, props.methods);
+    if (props.config.type === "ComponentRenderer" && props.config.child) {
+      callFunction(
+        props.config.onTap,
+        {
+          config: props.config.child,
+          path: props.config.path,
+        },
+        props.methods
+      );
     } else {
-      callFunction(props.config.onTap, {
-        config: props.config,
-        path: props.config.path,
-      }, props.methods);
+      callFunction(
+        props.config.onTap,
+        {
+          config: props.config,
+          path: props.config.path,
+        },
+        props.methods
+      );
     }
   }
 }
@@ -151,19 +170,27 @@ function selectComponent() {
 // 移除组件
 function removeComponent() {
   // emit("remove", props.config.path);
-  callFunction(props.config.onRemove, {
-    path: props.config.path,
-  }, props.methods);
+  callFunction(
+    props.config.onRemove,
+    {
+      path: props.config.path,
+    },
+    props.methods
+  );
 }
 
 // 上移组件
 function moveUp() {
   if (canMoveUp.value) {
     // emit("move", props.config.path, props.config.index - 1);
-    callFunction(props.config.onMove, {
-      path: props.config.path,
-      index: props.config.index - 1,
-    }, props.methods);
+    callFunction(
+      props.config.onMove,
+      {
+        path: props.config.path,
+        index: props.config.index - 1,
+      },
+      props.methods
+    );
   }
 }
 
@@ -171,46 +198,66 @@ function moveUp() {
 function moveDown() {
   if (canMoveDown.value) {
     // emit("move", props.config.path, props.config.index + 1);
-    callFunction(props.config.onMove, {
-      path: props.config.path,
-      index: props.config.index + 1,
-    }, props.methods);
+    callFunction(
+      props.config.onMove,
+      {
+        path: props.config.path,
+        index: props.config.index + 1,
+      },
+      props.methods
+    );
   }
 }
 
 // 子组件选择
 function onChildSelect(component: ComponentConfig, path: string[]) {
   // emit("select", component, path);
-  callFunction(props.config.onTap, {
-    config: component,
-    path: path,
-  }, props.methods);
+  callFunction(
+    props.config.onTap,
+    {
+      config: component,
+      path: path,
+    },
+    props.methods
+  );
 }
 
 // 子组件更新
 function onChildUpdate(component: ComponentConfig, path: string[]) {
   // emit("update", component, path);
-  callFunction(props.config.onUpdate, {
-    config: component,
-    path: path,
-  }, props.methods);
+  callFunction(
+    props.config.onUpdate,
+    {
+      config: component,
+      path: path,
+    },
+    props.methods
+  );
 }
 
 // 子组件移除
 function onChildRemove(path: string[]) {
   // emit("remove", path);
-  callFunction(props.config.onRemove, {
-    path: path,
-  }, props.methods);
+  callFunction(
+    props.config.onRemove,
+    {
+      path: path,
+    },
+    props.methods
+  );
 }
 
 // 子组件移动
 function onChildMove(path: string[], newIndex: number) {
   // emit("move", path, newIndex);
-  callFunction(props.config.onMove, {
-    path: path,
-    index: newIndex,
-  }, props.methods);
+  callFunction(
+    props.config.onMove,
+    {
+      path: path,
+      index: newIndex,
+    },
+    props.methods
+  );
 }
 
 // 拖拽变化
@@ -228,10 +275,14 @@ function onDragChange(event: any) {
 
     props.config.children.splice(index, 0, newComponent);
     // emit("update", props.config, props.config.path);
-    callFunction(props.config.onUpdate, {
-      config: props.config,
-      path: props.config.path,
-    }, props.methods);
+    callFunction(
+      props.config.onUpdate,
+      {
+        config: props.config,
+        path: props.config.path,
+      },
+      props.methods
+    );
   }
 }
 
@@ -260,7 +311,10 @@ function onDropToContainer(event: DragEvent) {
     if (data) {
       try {
         const newComponent = JSON.parse(data);
-        if (props.methods && typeof props.methods.onDropToContainer === 'function') {
+        if (
+          props.methods &&
+          typeof props.methods.onDropToContainer === "function"
+        ) {
           props.methods.onDropToContainer(newComponent, props.config.path);
         }
       } catch (e) {
@@ -269,7 +323,6 @@ function onDropToContainer(event: DragEvent) {
     }
   }
 }
-
 </script>
 
 <style scoped>
