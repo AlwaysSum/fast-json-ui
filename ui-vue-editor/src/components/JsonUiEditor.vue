@@ -23,7 +23,7 @@
         @moveDown="onTreeMoveDown"
         @dropComponent="onTreeDropComponent"
         @moveNode="onTreeMoveNode"
-        style="border-right:1px solid #eee;"
+        style="border-right: 1px solid #eee"
       />
       <!-- 画布和属性面板 -->
       <div class="center-panel">
@@ -121,7 +121,7 @@ import PropertyEditor from "./PropertyEditor.vue";
 import { ComponentCategory, ComponentConfig, ComponentMeta } from "../types";
 import { availableComponents } from "../config/config";
 import { registerComponent } from "fast-json-ui-vue";
-import HierarchyPanel from './HierarchyPanel.vue';
+import HierarchyPanel from "./HierarchyPanel.vue";
 
 //注册组件
 registerComponent("ComponentRenderer", ComponentRenderer);
@@ -192,7 +192,10 @@ const renderConfig = computed(() => {
 });
 
 // 递归处理组件配置
-function wrapWithRenderer(config: ComponentConfig, currentPath: string[]): ComponentConfig {
+function wrapWithRenderer(
+  config: ComponentConfig,
+  currentPath: string[]
+): ComponentConfig {
   if (!config) return { type: "text", text: "请添加组件" };
 
   // 如果已经是 ComponentRenderer，直接处理其子组件
@@ -209,7 +212,9 @@ function wrapWithRenderer(config: ComponentConfig, currentPath: string[]): Compo
   // 处理子组件
   if (config.children) {
     config.children = config.children.map((child: ComponentConfig) =>
-      child.type === "ComponentRenderer" ? child : wrapWithRenderer(child, currentPath)
+      child.type === "ComponentRenderer"
+        ? child
+        : wrapWithRenderer(child, currentPath)
     );
   }
   if (config.child) {
@@ -323,8 +328,9 @@ function addComponent(component: ComponentConfig) {
 }
 
 function selectComponent(component: ComponentConfig, path: string[]) {
+  if (component == null) return;
   // 如果 component 是 ComponentRenderer，选中 child
-  if (component.type === 'ComponentRenderer' && component.child) {
+  if (component.type === "ComponentRenderer" && component.child) {
     state.selectedComponent = component.child;
     state.componentPath = path;
   } else {
@@ -536,7 +542,7 @@ function onDropToContainer(component: ComponentConfig, path: string[]) {
   let current = state.rootComponent;
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length) {
+    if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         current = current.children[idx];
@@ -558,13 +564,13 @@ function onTreeSelect(path: string[]) {
   let current = state.rootComponent;
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length) {
+    if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         current = current.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       current = current.child;
     }
   }
@@ -573,9 +579,12 @@ function onTreeSelect(path: string[]) {
 }
 
 // 画布选中时联动树
-watch(() => state.componentPath, (val) => {
-  selectedTreePath.value = val;
-});
+watch(
+  () => state.componentPath,
+  (val) => {
+    selectedTreePath.value = val;
+  }
+);
 
 // 层级树操作：添加组件（默认添加文本）
 function onTreeAdd(path: string[]) {
@@ -583,22 +592,22 @@ function onTreeAdd(path: string[]) {
   let current = state.rootComponent;
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length) {
+    if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         current = current.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       current = current.child;
     }
   }
   // 支持 children/child
   if (Array.isArray(current.children)) {
-    current.children.push({ type: 'text', text: '新文本' });
+    current.children.push({ type: "text", text: "新文本" });
     updateConfig();
   } else if (current.child === undefined) {
-    current.child = { type: 'text', text: '新文本' };
+    current.child = { type: "text", text: "新文本" };
     updateConfig();
   }
 }
@@ -610,22 +619,22 @@ function onTreeRemove(path: string[]) {
   let parent = state.rootComponent;
   for (let i = 0; i < path.length - 2; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length - 2) {
+    if (key === "children" && i + 1 < path.length - 2) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         parent = parent.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       parent = parent.child;
     }
   }
   const lastKey = path[path.length - 2];
   const lastIdx = Number(path[path.length - 1]);
-  if (lastKey === 'children') {
+  if (lastKey === "children") {
     parent.children.splice(lastIdx, 1);
     updateConfig();
-  } else if (lastKey === 'child') {
+  } else if (lastKey === "child") {
     parent.child = undefined;
     updateConfig();
   }
@@ -638,19 +647,19 @@ function onTreeMoveUp(path: string[]) {
   let parent = state.rootComponent;
   for (let i = 0; i < path.length - 2; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length - 2) {
+    if (key === "children" && i + 1 < path.length - 2) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         parent = parent.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       parent = parent.child;
     }
   }
   const lastKey = path[path.length - 2];
   const lastIdx = Number(path[path.length - 1]);
-  if (lastKey === 'children' && lastIdx > 0) {
+  if (lastKey === "children" && lastIdx > 0) {
     const arr = parent.children;
     [arr[lastIdx - 1], arr[lastIdx]] = [arr[lastIdx], arr[lastIdx - 1]];
     updateConfig();
@@ -664,19 +673,19 @@ function onTreeMoveDown(path: string[]) {
   let parent = state.rootComponent;
   for (let i = 0; i < path.length - 2; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length - 2) {
+    if (key === "children" && i + 1 < path.length - 2) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         parent = parent.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       parent = parent.child;
     }
   }
   const lastKey = path[path.length - 2];
   const lastIdx = Number(path[path.length - 1]);
-  if (lastKey === 'children') {
+  if (lastKey === "children") {
     const arr = parent.children;
     if (lastIdx < arr.length - 1) {
       [arr[lastIdx + 1], arr[lastIdx]] = [arr[lastIdx], arr[lastIdx + 1]];
@@ -691,13 +700,13 @@ function onTreeDropComponent(component: any, path: string[]) {
   let current = state.rootComponent;
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
-    if (key === 'children' && i + 1 < path.length) {
+    if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
       if (!isNaN(idx)) {
         current = current.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       current = current.child;
     }
   }
@@ -715,13 +724,13 @@ function onTreeMoveNode(fromPath: string[], toPath: string[], toIndex: number) {
   let fromParent = state.rootComponent;
   for (let i = 0; i < fromPath.length - 2; i++) {
     const key = fromPath[i];
-    if (key === 'children' && i + 1 < fromPath.length - 2) {
+    if (key === "children" && i + 1 < fromPath.length - 2) {
       const idx = parseInt(fromPath[i + 1]);
       if (!isNaN(idx)) {
         fromParent = fromParent.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       fromParent = fromParent.child;
     }
   }
@@ -734,13 +743,13 @@ function onTreeMoveNode(fromPath: string[], toPath: string[], toIndex: number) {
   let toParent = state.rootComponent;
   for (let i = 0; i < toPath.length; i++) {
     const key = toPath[i];
-    if (key === 'children' && i + 1 < toPath.length) {
+    if (key === "children" && i + 1 < toPath.length) {
       const idx = parseInt(toPath[i + 1]);
       if (!isNaN(idx)) {
         toParent = toParent.children[idx];
         i++;
       }
-    } else if (key === 'child') {
+    } else if (key === "child") {
       toParent = toParent.child;
     }
   }
