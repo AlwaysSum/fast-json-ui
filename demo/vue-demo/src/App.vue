@@ -1,35 +1,37 @@
 <script setup lang="ts">
-import { ref, computed } from 'vue';
-import BasicExample from './examples/BasicExample.vue';
-import AdvancedExample from './examples/AdvancedExample.vue';
-import EditorExample from './examples/EditorExample.vue';
+import { ref, computed } from "vue";
+import BasicExample from "./examples/BasicExample.vue";
+import AdvancedExample from "./examples/AdvancedExample.vue";
+import EditorExample from "./examples/EditorExample.vue";
 
-const activeTab = ref<string>('basic');
-const isEditorMode = computed(() => activeTab.value === 'editor');
+const activeTab = ref<string>("basic");
+const isEditorMode = computed(() => activeTab.value === "editor");
 </script>
 
 <template>
   <div class="admin-app" :class="{ 'editor-mode': isEditorMode }">
     <header class="admin-header">
       <div class="logo">Fast-JSON-UI-Vue</div>
-      <div class="desc">A Vue 3 library for converting JSON to UI components</div>
+      <div class="desc">
+        A Vue 3 library for converting JSON to UI components
+      </div>
     </header>
     <div class="admin-body">
       <aside class="admin-sidebar">
-        <button 
-          :class="{ active: activeTab === 'basic' }" 
+        <button
+          :class="{ active: activeTab === 'basic' }"
           @click="activeTab = 'basic'"
         >
           Basic Example
         </button>
-        <button 
-          :class="{ active: activeTab === 'advanced' }" 
+        <button
+          :class="{ active: activeTab === 'advanced' }"
           @click="activeTab = 'advanced'"
         >
           Advanced Example
         </button>
-        <button 
-          :class="{ active: activeTab === 'editor' }" 
+        <button
+          :class="{ active: activeTab === 'editor' }"
           @click="activeTab = 'editor'"
         >
           UI Editor
@@ -84,7 +86,7 @@ body {
   align-items: center;
   padding: 0 32px;
   justify-content: space-between;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.03);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.03);
   z-index: 10;
 }
 .admin-header .logo {

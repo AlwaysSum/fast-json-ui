@@ -104,16 +104,20 @@
         <div class="property-label">子组件</div>
         <div class="children-count">
           {{ childrenCount }} 个子组件
+          <button class="add-child-btn" @click="openAddDialog">添加子组件</button>
         </div>
       </div>
     </template>
+    <AddComponentDialog v-if="showAddDialog" :show="showAddDialog" @close="closeAddDialog" @add="handleAddComponent" />
   </div>
 </template>
 
 <script lang="ts" setup>
-import { computed } from 'vue';
+import { ref, computed } from 'vue';
 import { ComponentConfig } from 'fast-json-ui-vue';
 import { ComponentMeta, PropertyType } from '../types';
+import { availableComponents } from '../config/config';
+import AddComponentDialog from './AddComponentDialog.vue';
 
 // Props
 const props = defineProps({
@@ -144,6 +148,27 @@ const childrenCount = computed(() => {
   }
   return 0;
 });
+
+// 新增：添加子组件弹窗逻辑
+const showAddDialog = ref(false);
+function openAddDialog() {
+  showAddDialog.value = true;
+}
+function closeAddDialog() {
+  showAddDialog.value = false;
+}
+function handleAddComponent(type: string) {
+  const metaToAdd = availableComponents.find(c => c.type === type);
+  if (metaToAdd) {
+    if (Array.isArray(props.component.children)) {
+      props.component.children.push(JSON.parse(JSON.stringify(metaToAdd.defaultConfig)));
+    } else if (props.component.child === undefined) {
+      props.component.child = JSON.parse(JSON.stringify(metaToAdd.defaultConfig));
+    }
+    emit('update', '', '');
+  }
+  closeAddDialog();
+}
 
 // 更新属性
 function updateProperty(name: string, value: any) {
@@ -215,5 +240,20 @@ function updateProperty(name: string, value: any) {
 .children-count {
   color: #666;
   font-size: 14px;
+}
+
+.add-child-btn {
+  margin-left: 12px;
+  font-size: 12px;
+  padding: 2px 8px;
+  border: 1px solid #1890ff;
+  background: #fff;
+  color: #1890ff;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.add-child-btn:hover {
+  background: #e6f7ff;
 }
 </style> 

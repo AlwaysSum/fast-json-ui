@@ -12,33 +12,20 @@
     </div>
 
     <div class="editor-layout">
-      <!-- 左侧组件列表 -->
-      <div class="component-panel" v-if="!state.previewMode">
-        <h3>组件列表</h3>
-        <div
-          class="component-category"
-          v-for="category in categories"
-          :key="category"
-        >
-          <h4>{{ getCategoryName(category) }}</h4>
-          <div class="component-list">
-            <div
-              v-for="component in getComponentsByCategory(category)"
-              :key="component.type"
-              class="component-item"
-              draggable="true"
-              @dragstart="onDragStart($event, component)"
-            >
-              <span class="component-icon" v-if="component.icon">{{
-                component.icon
-              }}</span>
-              <span class="component-name">{{ component.name }}</span>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- 中间预览操作区 -->
+      <!-- 层级面板 -->
+      <HierarchyPanel
+        :root="state.rootComponent"
+        :selectedPath="selectedTreePath"
+        @select="onTreeSelect"
+        @add="onTreeAdd"
+        @remove="onTreeRemove"
+        @moveUp="onTreeMoveUp"
+        @moveDown="onTreeMoveDown"
+        @dropComponent="onTreeDropComponent"
+        @moveNode="onTreeMoveNode"
+        style="border-right:1px solid #eee;"
+      />
+      <!-- 画布和属性面板 -->
       <div class="center-panel">
         <!-- 预览区域上方的工具栏 -->
         <div class="canvas-toolbar" v-if="!state.previewMode">
@@ -68,8 +55,6 @@
           </div>
         </div>
       </div>
-
-      <!-- 右侧属性面板 -->
       <div class="property-panel" v-if="!state.previewMode">
         <div class="tabs">
           <div
@@ -136,6 +121,7 @@ import PropertyEditor from "./PropertyEditor.vue";
 import { ComponentCategory, ComponentConfig, ComponentMeta } from "../types";
 import { availableComponents } from "../config/config";
 import { registerComponent } from "fast-json-ui-vue";
+import HierarchyPanel from './HierarchyPanel.vue';
 
 //注册组件
 registerComponent("ComponentRenderer", ComponentRenderer);
@@ -256,12 +242,16 @@ const renderMethods = ref({
   updateComponent: updateComponent,
   removeComponent: removeComponent,
   moveComponent: moveComponent,
+  onDropToContainer: onDropToContainer,
 });
 
 // 新增的状态
 const activePropertyTab = ref("properties");
 const globalVariables = ref<Record<string, any>>({});
 const globalFunctions = ref<Record<string, any>>({});
+
+// 新增：当前树选中路径
+const selectedTreePath = ref<string[]>([]);
 
 // 计算属性
 const categories = computed(() => {
@@ -333,8 +323,14 @@ function addComponent(component: ComponentConfig) {
 }
 
 function selectComponent(component: ComponentConfig, path: string[]) {
-  state.selectedComponent = component;
-  state.componentPath = path;
+  // 如果 component 是 ComponentRenderer，选中 child
+  if (component.type === 'ComponentRenderer' && component.child) {
+    state.selectedComponent = component.child;
+    state.componentPath = path;
+  } else {
+    state.selectedComponent = component;
+    state.componentPath = path;
+  }
 }
 
 function updateComponent(component: ComponentConfig, path: string[]) {
@@ -530,6 +526,229 @@ function updateGlobalVariables(variables: Record<string, any>) {
 
 function updateGlobalFunctions(functions: Record<string, any>) {
   globalFunctions.value = functions;
+}
+
+// 新增：拖拽到任意容器
+function onDropToContainer(component: ComponentConfig, path: string[]) {
+  // 保存当前状态到撤销栈
+  saveToUndoStack();
+  // 根据 path 定位到目标容器
+  let current = state.rootComponent;
+  for (let i = 0; i < path.length; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        current = current.children[idx];
+        i++;
+      }
+    }
+  }
+  // 如果目标容器有 children，则 push
+  if (current && Array.isArray(current.children)) {
+    current.children.push(component);
+    updateConfig();
+  }
+}
+
+// 选中树节点时联动选中组件
+function onTreeSelect(path: string[]) {
+  selectedTreePath.value = path;
+  // 根据 path 定位组件并选中
+  let current = state.rootComponent;
+  for (let i = 0; i < path.length; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        current = current.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      current = current.child;
+    }
+  }
+  state.selectedComponent = current;
+  state.componentPath = path;
+}
+
+// 画布选中时联动树
+watch(() => state.componentPath, (val) => {
+  selectedTreePath.value = val;
+});
+
+// 层级树操作：添加组件（默认添加文本）
+function onTreeAdd(path: string[]) {
+  saveToUndoStack();
+  let current = state.rootComponent;
+  for (let i = 0; i < path.length; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        current = current.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      current = current.child;
+    }
+  }
+  // 支持 children/child
+  if (Array.isArray(current.children)) {
+    current.children.push({ type: 'text', text: '新文本' });
+    updateConfig();
+  } else if (current.child === undefined) {
+    current.child = { type: 'text', text: '新文本' };
+    updateConfig();
+  }
+}
+
+// 层级树操作：删除组件
+function onTreeRemove(path: string[]) {
+  saveToUndoStack();
+  if (path.length < 2) return; // 根节点不允许删除
+  let parent = state.rootComponent;
+  for (let i = 0; i < path.length - 2; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length - 2) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        parent = parent.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      parent = parent.child;
+    }
+  }
+  const lastKey = path[path.length - 2];
+  const lastIdx = Number(path[path.length - 1]);
+  if (lastKey === 'children') {
+    parent.children.splice(lastIdx, 1);
+    updateConfig();
+  } else if (lastKey === 'child') {
+    parent.child = undefined;
+    updateConfig();
+  }
+}
+
+// 层级树操作：上移
+function onTreeMoveUp(path: string[]) {
+  saveToUndoStack();
+  if (path.length < 2) return;
+  let parent = state.rootComponent;
+  for (let i = 0; i < path.length - 2; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length - 2) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        parent = parent.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      parent = parent.child;
+    }
+  }
+  const lastKey = path[path.length - 2];
+  const lastIdx = Number(path[path.length - 1]);
+  if (lastKey === 'children' && lastIdx > 0) {
+    const arr = parent.children;
+    [arr[lastIdx - 1], arr[lastIdx]] = [arr[lastIdx], arr[lastIdx - 1]];
+    updateConfig();
+  }
+}
+
+// 层级树操作：下移
+function onTreeMoveDown(path: string[]) {
+  saveToUndoStack();
+  if (path.length < 2) return;
+  let parent = state.rootComponent;
+  for (let i = 0; i < path.length - 2; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length - 2) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        parent = parent.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      parent = parent.child;
+    }
+  }
+  const lastKey = path[path.length - 2];
+  const lastIdx = Number(path[path.length - 1]);
+  if (lastKey === 'children') {
+    const arr = parent.children;
+    if (lastIdx < arr.length - 1) {
+      [arr[lastIdx + 1], arr[lastIdx]] = [arr[lastIdx], arr[lastIdx + 1]];
+      updateConfig();
+    }
+  }
+}
+
+// 层级树拖拽添加组件
+function onTreeDropComponent(component: any, path: string[]) {
+  saveToUndoStack();
+  let current = state.rootComponent;
+  for (let i = 0; i < path.length; i++) {
+    const key = path[i];
+    if (key === 'children' && i + 1 < path.length) {
+      const idx = parseInt(path[i + 1]);
+      if (!isNaN(idx)) {
+        current = current.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      current = current.child;
+    }
+  }
+  if (Array.isArray(current.children)) {
+    current.children.push(component);
+    updateConfig();
+  }
+}
+
+// 树节点拖拽排序
+function onTreeMoveNode(fromPath: string[], toPath: string[], toIndex: number) {
+  if (!fromPath || !toPath) return;
+  saveToUndoStack();
+  // 找到 fromParent 和 fromIndex
+  let fromParent = state.rootComponent;
+  for (let i = 0; i < fromPath.length - 2; i++) {
+    const key = fromPath[i];
+    if (key === 'children' && i + 1 < fromPath.length - 2) {
+      const idx = parseInt(fromPath[i + 1]);
+      if (!isNaN(idx)) {
+        fromParent = fromParent.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      fromParent = fromParent.child;
+    }
+  }
+  const fromArr = fromParent.children;
+  const fromIdx = Number(fromPath[fromPath.length - 1]);
+  const node = fromArr[fromIdx];
+  // 删除原节点
+  fromArr.splice(fromIdx, 1);
+  // 找到 toParent
+  let toParent = state.rootComponent;
+  for (let i = 0; i < toPath.length; i++) {
+    const key = toPath[i];
+    if (key === 'children' && i + 1 < toPath.length) {
+      const idx = parseInt(toPath[i + 1]);
+      if (!isNaN(idx)) {
+        toParent = toParent.children[idx];
+        i++;
+      }
+    } else if (key === 'child') {
+      toParent = toParent.child;
+    }
+  }
+  // 插入到目标位置
+  if (Array.isArray(toParent.children)) {
+    toParent.children.splice(toIndex, 0, node);
+    updateConfig();
+  }
 }
 
 // 初始化

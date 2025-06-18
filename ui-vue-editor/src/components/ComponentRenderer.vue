@@ -6,6 +6,7 @@
       'is-editor': config.isEditor,
       'is-hoverable': config.isEditor && !config.isSelected,
       'is-layout': hasChildren || hasSingleChild,
+      'is-drag-over': isDragOver && hasChildren,
     }"
     @click="selectComponent"
     @mouseenter="setHovered(true)"
@@ -19,13 +20,28 @@
     </div>
 
     <div class="component-content">
-
-      <fast-json-widget
-        :config="props.config.child"
-        :data="props.data"
-        :methods="props.methods"
-      />
-
+      <!-- 布局型组件支持拖拽接收 -->
+      <div
+        v-if="hasChildren"
+        class="drop-container"
+        @dragenter="onDragEnter"
+        @dragleave="onDragLeave"
+        @dragover="onDragOver"
+        @drop="onDropToContainer"
+      >
+        <fast-json-widget
+          :config="props.config.child"
+          :data="props.data"
+          :methods="props.methods"
+        />
+      </div>
+      <template v-else>
+        <fast-json-widget
+          :config="props.config.child"
+          :data="props.data"
+          :methods="props.methods"
+        />
+      </template>
     </div>
   </div>
 </template>
@@ -34,7 +50,7 @@
 import { ref, computed, watch, PropType } from "vue";
 import { BaseConfig, callFunction, ComponentConfig, ConfigData, ConfigMethods } from "fast-json-ui-vue";
 import { FastJsonWidget } from "fast-json-ui-vue";
-import draggable from "vuedraggable";
+
 
 // Props
 const props = defineProps({
@@ -58,6 +74,9 @@ const emit = defineEmits(["select", "update", "remove", "move"]);
 
 // 悬停状态
 const isHovered = ref(false);
+
+// 拖拽覆盖状态
+const isDragOver = ref(false);
 
 // 设置悬停状态
 function setHovered(hovered: boolean) {
@@ -112,11 +131,21 @@ function getItemKey(item: ComponentConfig) {
 
 // 选择组件
 function selectComponent() {
-  // emit("select", props.config, props.config.path);
-  callFunction(props.config.onTap, {
-    config: props.config,
-    path: props.config.path,
-  }, props.methods);
+  // 只在编辑模式下允许选中
+  if (props.config.isEditor) {
+    // 如果当前是 ComponentRenderer，选中 child
+    if (props.config.type === 'ComponentRenderer' && props.config.child) {
+      callFunction(props.config.onTap, {
+        config: props.config.child,
+        path: props.config.path,
+      }, props.methods);
+    } else {
+      callFunction(props.config.onTap, {
+        config: props.config,
+        path: props.config.path,
+      }, props.methods);
+    }
+  }
 }
 
 // 移除组件
@@ -205,6 +234,42 @@ function onDragChange(event: any) {
     }, props.methods);
   }
 }
+
+// 新增：拖拽到容器
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = true;
+}
+
+function onDragLeave(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = false;
+}
+
+function onDragOver(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = true;
+}
+
+function onDropToContainer(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation(); // 关键：阻止冒泡，优先最内层容器
+  isDragOver.value = false;
+  if (event.dataTransfer) {
+    const data = event.dataTransfer.getData("application/json");
+    if (data) {
+      try {
+        const newComponent = JSON.parse(data);
+        if (props.methods && typeof props.methods.onDropToContainer === 'function') {
+          props.methods.onDropToContainer(newComponent, props.config.path);
+        }
+      } catch (e) {
+        console.error("Failed to parse dropped component", e);
+      }
+    }
+  }
+}
+
 </script>
 
 <style scoped>
@@ -324,5 +389,11 @@ function onDragChange(event: any) {
   left: 0;
   width: 100%;
   height: 100%;
+}
+
+.drop-container.is-drag-over,
+.component-wrapper.is-drag-over {
+  outline: 2px solid #1890ff;
+  background: #e6f7ff;
 }
 </style>
