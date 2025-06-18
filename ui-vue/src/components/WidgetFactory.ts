@@ -112,7 +112,6 @@ export const componentMap: Record<string, Component> = Object.fromEntries(
   Object.entries(widgetRegistry).map(([type, reg]) => [type, reg.component])
 );
 
-console.log("@@@WidgetFactory", widgetRegistry);
 /**
  * 获取组件类型
  * @param type 组件类型

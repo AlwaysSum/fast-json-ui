@@ -7,7 +7,7 @@
       </div>
 
       <div
-        v-for="property in meta.properties"
+        v-for="property in filteredProperties"
         :key="property.name"
         class="property-item"
       >
@@ -137,6 +137,15 @@ const props = defineProps({
 
 // Emits
 const emit = defineEmits(["update"]);
+
+// 新增：过滤掉 child/children 的属性
+const filteredProperties = computed(() => {
+  return (
+    props.meta?.properties?.filter(
+      (p) => p.name !== "child" && p.name !== "children"
+    ) || []
+  );
+});
 
 // 是否有子组件
 const hasChildren = computed(() => {
