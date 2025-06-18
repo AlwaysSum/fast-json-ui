@@ -1,15 +1,15 @@
 import { type Component } from "vue";
 
 // 导入组件
-import TextComponent from "./widgets/TextComponent.vue";
-import TestComponent from "./widgets/TestComponent.vue";
-import ImageComponent from "./widgets/ImageComponent.vue";
-import ButtonComponent from "./widgets/ButtonComponent.vue";
-import ContainerComponent from "./widgets/ContainerComponent.vue";
-import RowComponent from "./widgets/RowComponent.vue";
-import ColumnComponent from "./widgets/ColumnComponent.vue";
-import StackComponent from "./widgets/StackComponent.vue";
-import DefaultComponent from "./widgets/DefaultComponent.vue";
+import TextComponent from "./widgets/basic/TextComponent.vue";
+import TestComponent from "./widgets/other/TestComponent.vue";
+import ImageComponent from "./widgets/basic/ImageComponent.vue";
+import ButtonComponent from "./widgets/basic/ButtonComponent.vue";
+import ContainerComponent from "./widgets/layout/ContainerComponent.vue";
+import RowComponent from "./widgets/layout/RowComponent.vue";
+import ColumnComponent from "./widgets/layout/ColumnComponent.vue";
+import StackComponent from "./widgets/layout/StackComponent.vue";
+import DefaultComponent from "./widgets/other/DefaultComponent.vue";
 
 // Vite import.meta.glob 类型声明（仅限 Vite 项目）
 declare global {
@@ -45,19 +45,21 @@ export interface WidgetRegistration {
 
 const widgetRegistry: Record<string, WidgetRegistration> = {};
 
-// 自动扫描 widgets 目录下所有 .vue 和 .metadata.ts 文件
-const componentModules = import.meta.glob("./widgets/*.vue", { eager: true });
-const metadataModules = import.meta.glob("./widgets/*.metadata.ts", {
+// 自动扫描 widgets 目录下所有 .vue 和 .metadata.ts 文件（递归子文件夹）
+const componentModules = import.meta.glob("./widgets/**/*.vue", { eager: true });
+const metadataModules = import.meta.glob("./widgets/**/*.metadata.ts", {
   eager: true,
 });
 
 // 以文件名（不含扩展名）为 key 进行组件和元数据的对应
 Object.entries(componentModules).forEach(([vuePath, mod]: [string, any]) => {
-  const name = vuePath.match(/\.\/widgets\/(.*)\.vue$/)?.[1];
+  const name = vuePath.match(/\.\/widgets\/(?:.+\/)?(.*)\.vue$/)?.[1];
   if (!name) return;
   const component = mod.default;
   // 查找同名 metadata
-  const metaMod = metadataModules[`./widgets/${name}.metadata.ts`];
+  // 递归子文件夹后，metadata 路径需与 vuePath 匹配
+  const metaPath = vuePath.replace(/\.vue$/, ".metadata.ts");
+  const metaMod = metadataModules[metaPath];
   const meta = metaMod?.metadata || metaMod?.default;
   if (meta && meta.type) {
     widgetRegistry[meta.type] = { component, metadata: meta };
@@ -85,6 +87,7 @@ export function getWidgetMetaByType(type: string): WidgetMeta | undefined {
  * 注册自定义组件
  * @param type 组件类型名称
  * @param component 组件实例
+ * @param metadata 组件元数据
  */
 export function registerCustomComponent(
   type: string,

@@ -1,12 +1,12 @@
-import { WidgetMeta } from '../WidgetFactory';
+import { WidgetMeta } from '../../WidgetFactory';
 
 export const metadata: WidgetMeta = {
-  type: 'column',
-  name: '列布局',
-  icon: '⬆️⬇️',
+  type: 'row',
+  name: '行布局',
+  icon: '⬅️➡️',
   category: 'layout',
   defaultConfig: {
-    type: 'column',
+    type: 'row',
     children: [],
     gap: '',
     align: '',

@@ -1,4 +1,4 @@
-import { WidgetMeta } from "../WidgetFactory";
+import { WidgetMeta } from '../../WidgetFactory';
 
 export const metadata: WidgetMeta = {
   type: "button",

@@ -21,7 +21,7 @@
 
 <script setup lang="ts">
 import { defineProps } from "vue";
-import * as FastJsonUI from "../../utils/fast-json-ui";
+import * as FastJsonUI from '../../../utils/fast-json-ui';
 
 const props = defineProps({
   config: { type: Object, required: true },

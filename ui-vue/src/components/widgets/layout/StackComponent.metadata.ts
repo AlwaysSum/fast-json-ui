@@ -1,12 +1,12 @@
-import { WidgetMeta } from '../WidgetFactory';
+import { WidgetMeta } from '../../WidgetFactory';
 
 export const metadata: WidgetMeta = {
-  type: 'row',
-  name: '行布局',
-  icon: '⬅️➡️',
+  type: 'stack',
+  name: '堆叠布局',
+  icon: '🗂️',
   category: 'layout',
   defaultConfig: {
-    type: 'row',
+    type: 'stack',
     children: [],
     gap: '',
     align: '',
@@ -17,7 +17,8 @@ export const metadata: WidgetMeta = {
     borderRadius: '',
     boxShadow: '',
     width: '',
-    height: ''
+    height: '',
+    zIndexMap: {}
   },
   properties: [
     { name: 'children', label: '子组件', type: 'children' },
@@ -42,7 +43,8 @@ export const metadata: WidgetMeta = {
     { name: 'borderRadius', label: '圆角', type: 'string', defaultValue: '' },
     { name: 'boxShadow', label: '阴影', type: 'string', defaultValue: '' },
     { name: 'width', label: '宽度', type: 'string', defaultValue: '' },
-    { name: 'height', label: '高度', type: 'string', defaultValue: '' }
+    { name: 'height', label: '高度', type: 'string', defaultValue: '' },
+    { name: 'zIndexMap', label: '子项zIndex映射', type: 'object', defaultValue: {} }
   ]
 };
 

@@ -1,5 +1,5 @@
 <template>
-  <div :style="containerStyle" v-if="config.children && config.children.length > 0">
+  <div :style="rowStyle">
     <fast-json-widget
       v-for="(item, index) in config.children"
       :key="index"
@@ -8,14 +8,11 @@
       :methods="methods"
     />
   </div>
-  <div :style="containerStyle" v-else>
-    <fast-json-widget :config="config.child" :data="data" :methods="methods" />
-  </div>
 </template>
 
 <script setup lang="ts">
 import { defineProps, computed } from "vue";
-import * as FastJsonUI from "../../utils/fast-json-ui";
+import * as FastJsonUI from '../../../utils/fast-json-ui';
 
 const props = defineProps({
   config: { type: Object, required: true },
@@ -27,10 +24,10 @@ const getValueFromConfig = (value: any): any => {
   return FastJsonUI.getValueFromConfig(value, props.data, props.methods);
 };
 
-const containerStyle = computed(() => {
+const rowStyle = computed(() => {
   return {
     display: "flex",
-    flexDirection: "column" as const,
+    flexDirection: "row" as const,
     gap: getValueFromConfig(props.config.gap),
     alignItems: getValueFromConfig(props.config.align),
     justifyContent: getValueFromConfig(props.config.justify),
