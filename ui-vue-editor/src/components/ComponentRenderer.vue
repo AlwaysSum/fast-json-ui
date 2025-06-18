@@ -8,7 +8,7 @@
       'is-layout': hasChildren || hasSingleChild,
       'is-drag-over': isDragOver && hasChildren,
     }"
-    @click="selectComponent"
+    @click.stop="selectComponent"
     @mouseenter="setHovered(true)"
     @mouseleave="setHovered(false)"
   >
