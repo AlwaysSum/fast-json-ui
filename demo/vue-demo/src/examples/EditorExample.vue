@@ -1,5 +1,10 @@
 <template>
   <div class="editor-example">
+    <div style="margin-bottom: 16px">
+      <button class="dialog-btn" @click="showPreviewDialog">
+        预览渲染效果
+      </button>
+    </div>
     <div class="editor-container">
       <json-ui-editor
         :initial-config="initialConfig"
@@ -7,11 +12,22 @@
         @export="onExport"
       />
     </div>
-
-    <div class="output-section">
-      <div class="preview-section">
-        <h3>预览</h3>
-        <div class="preview-container">
+    <dialog v-if="dialogVisible" class="custom-dialog" open>
+      <div class="dialog-header">
+        <span v-if="dialogType === 'json'">导出 JSON</span>
+        <span v-else-if="dialogType === 'preview'">组件预览</span>
+        <button class="close-btn" @click="closeDialog">×</button>
+      </div>
+      <div class="dialog-body">
+        <vue-json-pretty
+          v-if="dialogType === 'json'"
+          :data="dialogJson"
+          :deep="3"
+          :showLine="true"
+          :showIcon="true"
+          style="max-height: 60vh; overflow:auto;"
+        />
+        <div v-else-if="dialogType === 'preview'" class="preview-container">
           <fast-json-widget
             :config="currentConfig"
             :data="previewData"
@@ -19,19 +35,14 @@
           />
         </div>
       </div>
-
-      <div class="json-section">
-        <h3>生成的 JSON</h3>
-        <div class="json-container">
-          <pre>{{ formattedJson }}</pre>
-        </div>
-      </div>
-    </div>
+    </dialog>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed } from "vue";
+import VueJsonPretty from 'vue-json-pretty';
+import 'vue-json-pretty/lib/styles.css';
 import { JsonUiEditor } from "fast-json-ui-editor";
 import { ComponentConfig } from "fast-json-ui-vue";
 
@@ -75,10 +86,23 @@ const previewMethods = ref({
   },
 });
 
-// 格式化的 JSON
-const formattedJson = computed(() => {
-  return JSON.stringify(currentConfig.value, null, 2);
+// 弹窗相关
+const dialogVisible = ref(false);
+const dialogType = ref<"json" | "preview">("json");
+const dialogJson = ref<any>(null);
+
+const formattedDialogJson = computed(() => {
+  return JSON.stringify(dialogJson.value, null, 2);
 });
+
+function closeDialog() {
+  dialogVisible.value = false;
+}
+
+function showPreviewDialog() {
+  dialogType.value = "preview";
+  dialogVisible.value = true;
+}
 
 // 配置更新事件
 function onConfigUpdate(config: ComponentConfig) {
@@ -87,25 +111,15 @@ function onConfigUpdate(config: ComponentConfig) {
 
 // 导出事件
 function onExport(config: ComponentConfig) {
-  console.log("导出配置:", config);
-  // 可以在这里添加导出到文件的逻辑
+  dialogType.value = "json";
+  dialogJson.value = config;
+  dialogVisible.value = true;
 }
 </script>
 
 <style scoped>
 .editor-example {
   padding: 20px;
-}
-
-h2 {
-  margin-top: 0;
-  margin-bottom: 8px;
-}
-
-p {
-  margin-top: 0;
-  margin-bottom: 24px;
-  color: #666;
 }
 
 .editor-container {
@@ -116,37 +130,74 @@ p {
   overflow: auto;
 }
 
-.output-section {
+.dialog-btn {
+  padding: 6px 18px;
+  font-size: 15px;
+  border: 1px solid #1890ff;
+  background: #fff;
+  color: #1890ff;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: background 0.18s, color 0.18s;
+}
+.dialog-btn:hover {
+  background: #e6f7ff;
+}
+
+.custom-dialog {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  min-width: 400px;
+  min-height: 200px;
+  max-width: 90vw;
+  max-height: 80vh;
+  transform: translate(-50%, -50%);
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  z-index: 9999;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.18);
   display: flex;
-  gap: 24px;
+  flex-direction: column;
 }
-
-.preview-section,
-.json-section {
+.dialog-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px 8px 18px;
+  border-bottom: 1px solid #eee;
+  font-size: 17px;
+  font-weight: bold;
+}
+.close-btn {
+  background: none;
+  border: none;
+  font-size: 22px;
+  color: #888;
+  cursor: pointer;
+  margin-left: 12px;
+}
+.dialog-body {
   flex: 1;
+  padding: 18px;
+  overflow: auto;
 }
-
-h3 {
-  margin-top: 0;
-  margin-bottom: 12px;
-}
-
-.preview-container,
-.json-container {
-  padding: 16px;
-  background-color: #f9f9f9;
+.preview-container {
+  background: #f9f9f9;
   border: 1px solid #ddd;
   border-radius: 4px;
   min-height: 200px;
   max-height: 400px;
+  padding: 16px;
   overflow: auto;
 }
-
 pre {
   margin: 0;
   white-space: pre-wrap;
   word-wrap: break-word;
   font-family: monospace;
   font-size: 14px;
+  overflow: auto;
 }
 </style>

@@ -497,8 +497,27 @@ function togglePreviewMode() {
   }
 }
 
+function stripComponentRenderer(config: any): any {
+  if (!config) return config;
+  if (config.type === "ComponentRenderer") {
+    if (config.child) return stripComponentRenderer(config.child);
+    if (config.children) return config.children.map(stripComponentRenderer);
+    return null;
+  }
+  // 递归处理 children/child
+  const newConfig: any = { ...config };
+  if (Array.isArray(newConfig.children)) {
+    newConfig.children = newConfig.children.map(stripComponentRenderer);
+  }
+  if (newConfig.child) {
+    newConfig.child = stripComponentRenderer(newConfig.child);
+  }
+  return newConfig;
+}
+
 function exportJson() {
-  emit("export", state.rootComponent);
+  const cleanConfig = stripComponentRenderer(state.rootComponent);
+  emit("export", cleanConfig);
 }
 
 function updateConfig() {

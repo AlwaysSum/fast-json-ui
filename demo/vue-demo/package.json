@@ -15,7 +15,8 @@
   "dependencies": {
     "fast-json-ui-editor": "file:../../ui-vue-editor",
     "fast-json-ui-vue": "file:../../ui-vue",
-    "vue": "^3.5.13"
+    "vue": "^3.5.13",
+    "vue-json-pretty": "^2.4.0"
   },
   "devDependencies": {
     "@types/node": "^22.13.10",
