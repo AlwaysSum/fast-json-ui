@@ -1,25 +1,100 @@
-import { WidgetMeta } from '../WidgetFactory';
+import { WidgetMeta } from "../WidgetFactory";
 
 export const metadata: WidgetMeta = {
-  type: 'button',
-  name: '按钮',
-  icon: '🔘',
-  category: 'basic',
+  type: "button",
+  name: "按钮",
+  icon: "🔘",
+  category: "basic",
   defaultConfig: {
-    type: 'button',
-    text: '按钮',
-    size: 'medium',
-    onTap: ''
+    type: "button",
+    text: "按钮",
+    size: "medium",
+    onTap: "",
+    backgroundColor: "",
+    color: "",
+    borderRadius: "",
+    width: "",
+    height: "",
+    disabled: false,
+    icon: "",
+    fontSize: "",
+    fontWeight: "",
+    padding: "",
+    margin: "",
+    boxShadow: "",
+    block: false,
+    loading: false,
+    shape: "default",
+    typeStyle: "primary",
+    hoverColor: "",
+    activeColor: "",
   },
   properties: [
-    { name: 'text', label: '文本', type: 'string', defaultValue: '按钮', required: true },
-    { name: 'size', label: '尺寸', type: 'select', defaultValue: 'medium', options: [
-      { label: '小', value: 'small' },
-      { label: '中', value: 'medium' },
-      { label: '大', value: 'large' }
-    ] },
-    { name: 'onTap', label: '点击事件', type: 'method' }
-  ]
+    { name: "width", label: "宽度", type: "string", defaultValue: "" },
+    { name: "height", label: "高度", type: "string", defaultValue: "" },
+    {
+      name: "text",
+      label: "文本",
+      type: "string",
+      defaultValue: "按钮",
+      required: true,
+    },
+    {
+      name: "size",
+      label: "尺寸",
+      type: "select",
+      defaultValue: "medium",
+      options: [
+        { label: "小", value: "small" },
+        { label: "中", value: "medium" },
+        { label: "大", value: "large" },
+      ],
+    },
+    {
+      name: "backgroundColor",
+      label: "背景色",
+      type: "color",
+      defaultValue: "",
+    },
+    { name: "color", label: "文字颜色", type: "color", defaultValue: "" },
+    { name: "borderRadius", label: "圆角", type: "string", defaultValue: "" },
+    { name: "fontSize", label: "字体大小", type: "string", defaultValue: "" },
+    { name: "fontWeight", label: "字体粗细", type: "string", defaultValue: "" },
+    { name: "padding", label: "内边距", type: "string", defaultValue: "" },
+    { name: "margin", label: "外边距", type: "string", defaultValue: "" },
+    { name: "boxShadow", label: "阴影", type: "string", defaultValue: "" },
+    { name: "block", label: "块级显示", type: "boolean", defaultValue: false },
+    { name: "loading", label: "加载中", type: "boolean", defaultValue: false },
+    {
+      name: "shape",
+      label: "形状",
+      type: "select",
+      defaultValue: "default",
+      options: [
+        { label: "默认", value: "default" },
+        { label: "圆形", value: "circle" },
+        { label: "圆角", value: "round" },
+      ],
+    },
+    {
+      name: "typeStyle",
+      label: "类型",
+      type: "select",
+      defaultValue: "primary",
+      options: [
+        { label: "主要", value: "primary" },
+        { label: "默认", value: "default" },
+        { label: "危险", value: "danger" },
+        { label: "成功", value: "success" },
+        { label: "警告", value: "warning" },
+      ],
+    },
+    { name: "hoverColor", label: "悬停色", type: "color", defaultValue: "" },
+    { name: "activeColor", label: "按下色", type: "color", defaultValue: "" },
+    { name: "disabled", label: "禁用", type: "boolean", defaultValue: false },
+    { name: "icon", label: "图标", type: "string", defaultValue: "" },
+    { name: "onTap", label: "点击事件", type: "method" },
+  ],
 };
 
-export default metadata; 
+export default metadata;

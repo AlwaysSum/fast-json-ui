@@ -23,10 +23,19 @@ const props = defineProps({
   methods: { type: Object, default: () => ({}) },
 });
 
+const getValueFromConfig = (value: any): any => {
+  return FastJsonUI.getValueFromConfig(value, props.data, props.methods);
+};
+
 const containerStyle = computed(() => {
   return {
     display: "flex",
     flexDirection: "column" as const,
+    gap: getValueFromConfig(props.config.gap),
+    alignItems: getValueFromConfig(props.config.align),
+    justifyContent: getValueFromConfig(props.config.justify),
+    borderRadius: getValueFromConfig(props.config.borderRadius),
+    boxShadow: getValueFromConfig(props.config.boxShadow),
     ...FastJsonUI.computeStyle(props.config),
   };
 });

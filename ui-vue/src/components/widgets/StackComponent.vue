@@ -6,7 +6,7 @@
       :config="item"
       :data="data"
       :methods="methods"
-      :style="getItemStyle(index)"
+      :style="getItemStyle(item)"
     />
   </div>
 </template>
@@ -21,21 +21,26 @@ const props = defineProps({
   methods: { type: Object, default: () => ({}) },
 });
 
-const stackStyle = computed(() => {
-  return {
-    position: "relative" as const,
-    ...FastJsonUI.computeStyle(props.config),
-  };
-});
+const direction = computed(() => props.config.direction || "column");
+const gap = computed(() => props.config.gap || 0);
+const alignItems = computed(() => props.config.alignItems || "stretch");
+const justifyContent = computed(() => props.config.justifyContent || "flex-start");
 
-const getItemStyle = (index: number) => {
-  return {
-    position: "absolute" as const,
-    top: 0,
-    left: 0,
-    width: "100%",
-    height: "100%",
-    zIndex: index,
-  };
+const stackStyle = computed(() => ({
+  display: "flex",
+  flexDirection: direction.value,
+  gap: typeof gap.value === "number" ? `${gap.value}px` : gap.value,
+  alignItems: alignItems.value,
+  justifyContent: justifyContent.value,
+  ...FastJsonUI.computeStyle(props.config),
+}));
+
+const getItemStyle = (item: any) => {
+  const zIndexMap = props.config.zIndexMap || {};
+  let zIndex;
+  if (item && item.id && typeof zIndexMap[item.id] === 'number') {
+    zIndex = zIndexMap[item.id];
+  }
+  return zIndex !== undefined ? { zIndex } : {};
 };
 </script>
