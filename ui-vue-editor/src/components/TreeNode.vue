@@ -34,7 +34,11 @@
   <template v-else>
     <div
       class="tree-node"
-      :class="{ selected: isSelected, 'drag-over': isDragOver, 'is-root': isRoot }"
+      :class="{
+        selected: isSelected,
+        'drag-over': isDragOver,
+        'is-root': isRoot,
+      }"
       :style="{ '--tree-indent': (level || 0) * 12 + 'px' }"
       @mouseenter="onMouseEnter"
       @mouseleave="onMouseLeave"
@@ -112,9 +116,14 @@ const isSelected = computed(
   () => JSON.stringify(props.path) === JSON.stringify(props.selectedPath)
 );
 const canExpand = computed(() => {
-  return (Array.isArray(props.node.children) && props.node.children.length > 0) || !!props.node.child;
+  return (
+    (Array.isArray(props.node.children) && props.node.children.length > 0) ||
+    !!props.node.child
+  );
 });
-const hasChildren = computed(() => Array.isArray(props.node.children) && props.node.children.length > 0);
+const hasChildren = computed(
+  () => Array.isArray(props.node.children) && props.node.children.length > 0
+);
 const isDragOver = ref(false);
 const dragOverIndex = ref(-1);
 const expanded = ref(true);
@@ -233,7 +242,7 @@ function getNodeIcon(type: string) {
   padding-left: 0;
 }
 .tree-node:not(.is-root)::before {
-  content: '';
+  content: "";
   position: absolute;
   left: calc(var(--tree-indent, 0) - 11px);
   top: 0;
@@ -244,7 +253,7 @@ function getNodeIcon(type: string) {
   display: block;
 }
 .tree-node:not(.is-root) > .node-label::before {
-  content: '';
+  content: "";
   display: inline-block;
   width: 16px;
   height: 1px;

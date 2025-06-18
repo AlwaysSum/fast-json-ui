@@ -172,7 +172,7 @@ function handleAddComponent(type: string) {
 
 // 更新属性
 function updateProperty(name: string, value: any) {
-  emit('update', name, value);
+  emit('update', props.component, name, value);
 }
 </script>
 
