@@ -38,11 +38,21 @@
         selected: isSelected,
         'drag-over': isDragOver,
         'is-root': isRoot,
+        'can-drop': true,
+        [`drop-${dropPosition}`]: isDragOver && dropPosition
       }"
       :style="{ '--tree-indent': (level || 0) * 12 + 'px' }"
       @mouseenter="onMouseEnter"
       @mouseleave="onMouseLeave"
+      @dragenter="onDragEnter"
+      @dragleave="onDragLeave"
+      @dragover="onDragOver"
+      @drop="onDrop"
     >
+      <!-- 拖拽位置指示器 -->
+      <div v-if="isDragOver && dropPosition" class="drop-indicator" :class="`indicator-${dropPosition}`">
+        <div class="drop-line"></div>
+      </div>
       <div class="node-label" @click="select">
         <span v-if="canExpand" class="tree-toggle" @click.stop="toggleExpand">
           {{ expanded ? "▼" : "▶" }}
@@ -124,6 +134,14 @@ const canExpand = computed(() => {
 const hasChildren = computed(
   () => Array.isArray(props.node.children) && props.node.children.length > 0
 );
+
+// 判断是否可以接受拖拽的组件
+const canAcceptDrop = computed(() => {
+  // 容器类组件可以接受拖拽
+  const containerTypes = ['container', 'row', 'column', 'stack'];
+  return containerTypes.includes(props.node.type);
+});
+
 const isDragOver = ref(false);
 const dragOverIndex = ref(-1);
 const expanded = ref(true);
@@ -173,27 +191,75 @@ function onDropNode(event: DragEvent, idx: number) {
     } catch (e) {}
   }
 }
+// 拖拽位置指示器
+const dropPosition = ref<'before' | 'after' | 'inside' | null>(null);
+
+function calculateDropPosition(event: DragEvent): 'before' | 'after' | 'inside' {
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+  const y = event.clientY - rect.top;
+  const height = rect.height;
+  
+  // 容器类组件优先支持内部插入
+  if (canAcceptDrop.value) {
+    const threshold = height * 0.25; // 25% 区域用于前后插入
+    
+    if (y < threshold) {
+      return 'before';
+    } else if (y > height - threshold) {
+      return 'after';
+    } else {
+      return 'inside';
+    }
+  }
+  
+  // 非容器组件只支持前后插入
+  return y < height / 2 ? 'before' : 'after';
+}
+
+function onDragEnter(event: DragEvent) {
+  event.preventDefault();
+  isDragOver.value = true;
+  dropPosition.value = calculateDropPosition(event);
+}
+
 function onDragOver(event: DragEvent) {
-  if (Array.isArray(props.node.children)) {
-    event.preventDefault();
-    isDragOver.value = true;
+  event.preventDefault();
+  isDragOver.value = true;
+  dropPosition.value = calculateDropPosition(event);
+}
+
+function onDragLeave(event: DragEvent) {
+  // 检查是否真的离开了当前节点
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    isDragOver.value = false;
+    dropPosition.value = null;
   }
 }
-function onDragLeave(event: DragEvent) {
-  isDragOver.value = false;
-}
+
 function onDrop(event: DragEvent) {
+  event.preventDefault();
+  event.stopPropagation();
   isDragOver.value = false;
-  if (Array.isArray(props.node.children)) {
-    event.preventDefault();
-    const data = event.dataTransfer?.getData("application/json");
-    if (data) {
-      try {
-        const newComponent = JSON.parse(data);
-        emit("dropComponent", newComponent, props.path);
-      } catch (e) {
-        console.error("Failed to parse dropped component", e);
-      }
+  
+  const position = dropPosition.value;
+  dropPosition.value = null;
+  
+  const data = event.dataTransfer?.getData("application/json");
+  if (data) {
+    try {
+      const widget = JSON.parse(data);
+      // 将数组路径转换为字符串路径
+      const pathString = Array.isArray(props.path) ? props.path.join('.') : props.path;
+      console.log('TreeNode onDrop:', widget, 'to path:', pathString, 'position:', position);
+      // 发送拖拽事件，包含目标路径和位置信息
+      emit("dropComponent", widget, pathString, position);
+    } catch (e) {
+      console.error("Failed to parse dropped component", e);
     }
   }
 }
@@ -303,9 +369,75 @@ function getNodeIcon(type: string) {
   border: 1.5px solid #1890ff;
   box-shadow: 0 0 0 2px #e6f7ff;
 }
+
 .tree-node.drag-over > .node-label {
+  background: #f0f8ff;
+  border: 2px dashed #1890ff;
+  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.1);
+}
+
+.tree-node.can-drop > .node-label {
+  position: relative;
+}
+
+.tree-node.can-drop > .node-label::after {
+  content: "📦";
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 12px;
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.tree-node.can-drop.drag-over > .node-label {
   background: #e6f7ff;
-  border: 1.5px dashed #1890ff;
+  border-color: #1890ff;
+  transform: scale(1.02);
+  box-shadow: 0 2px 8px rgba(24, 144, 255, 0.3);
+}
+
+.tree-node.can-drop > .node-label:hover {
+  border-color: #40a9ff;
+}
+
+/* 拖拽位置指示器样式 */
+.drop-indicator {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drop-indicator.indicator-before {
+  top: -2px;
+}
+
+.drop-indicator.indicator-after {
+  bottom: -2px;
+}
+
+.drop-indicator.indicator-inside {
+  top: 50%;
+  transform: translateY(-50%);
+  left: 20px;
+  right: 20px;
+}
+
+.drop-line {
+  height: 2px;
+  background: #1890ff;
+  border-radius: 1px;
+  box-shadow: 0 0 4px rgba(24, 144, 255, 0.5);
+}
+
+.drop-indicator.indicator-inside .drop-line {
+  height: 1px;
+  background: rgba(24, 144, 255, 0.3);
+  border: 1px dashed #1890ff;
+  border-radius: 2px;
 }
 .tree-toggle {
   width: 18px;

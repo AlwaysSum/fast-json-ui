@@ -1,13 +1,6 @@
 <template>
   <div class="app">
-    <h1>Fast-JSON-UI 编辑器</h1>
-    <div class="editor-container">
-      <json-ui-editor 
-        :initial-config="initialConfig"
-        @update:config="onConfigUpdate"
-        @export="onExport"
-      />
-    </div>
+    <JsonUiEditor :initial-config="initialConfig" @update:config="onConfigUpdate" @export="onExport" />
     <div class="output-container" v-if="outputConfig">
       <h2>输出 JSON</h2>
       <pre>{{ outputConfig }}</pre>
@@ -17,7 +10,7 @@
 
 <script lang="ts" setup>
 import { ref } from 'vue';
-import { JsonUiEditor } from './types/index.d';
+import JsonUiEditor from './components/JsonUiEditor.vue';
 import { ComponentConfig } from 'fast-json-ui-vue';
 
 // 初始配置
@@ -63,7 +56,7 @@ body {
 }
 
 .app {
-  max-width: 1200px;
+  max-width: 100%;
   margin: 0 auto;
   padding: 20px;
 }
@@ -91,4 +84,4 @@ pre {
   word-wrap: break-word;
   font-family: monospace;
 }
-</style> 
+</style>

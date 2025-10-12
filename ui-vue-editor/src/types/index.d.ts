@@ -1,7 +1,7 @@
 import { App, Component } from 'vue';
 import { ComponentConfig } from 'fast-json-ui-vue';
 
-export const JsonUiEditor: Component;
+declare const JsonUiEditor: Component;
 
 export enum ComponentCategory {
   BASIC = 'basic',
@@ -56,7 +56,9 @@ export interface EditorConfig {
 
 export function install(app: App): void;
 
-export const FastJsonUiEditor: {
+declare const FastJsonUiEditor: {
   install: typeof install;
   JsonUiEditor: Component;
-}; 
+};
+
+export { JsonUiEditor, FastJsonUiEditor };

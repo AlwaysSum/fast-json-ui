@@ -1,127 +1,124 @@
 <template>
   <div class="property-editor">
-    <div v-if="!meta" class="no-properties">没有可编辑的属性</div>
-    <template v-else>
-      <div class="property-type">
-        <strong>组件类型:</strong> {{ meta.name }}
-      </div>
-
-      <div
-        v-for="property in filteredProperties"
-        :key="property.name"
-        class="property-item"
+    <t-card v-if="!meta" title="属性编辑器" :bordered="false">
+      <t-empty description="没有可编辑的属性" />
+    </t-card>
+    <t-card v-else :title="`${meta.name} 属性`" :bordered="false">
+      <t-form
+        :data="formData"
+        :colon="true"
+        label-width="100px"
+        @submit="onSubmit"
       >
-        <div class="property-label">
-          {{ property.label }}
-          <span class="required" v-if="property.required">*</span>
-        </div>
-
-        <!-- 字符串属性 -->
-        <input
-          v-if="property.type === 'string'"
-          type="text"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
-          class="property-input"
-        />
-
-        <!-- 数字属性 -->
-        <input
-          v-else-if="property.type === 'number'"
-          type="number"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, Number((e.target as HTMLInputElement).value))"
-          class="property-input"
-        />
-
-        <!-- 布尔属性 -->
-        <input
-          v-else-if="property.type === 'boolean'"
-          type="checkbox"
-          :checked="component[property.name]"
-          @change="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).checked)"
-          class="property-checkbox"
-        />
-
-        <!-- 选择属性 -->
-        <select
-          v-else-if="property.type === 'select'"
-          :value="component[property.name]"
-          @change="(e: any) => updateProperty(property.name, (e.target as HTMLSelectElement).value)"
-          class="property-select"
+        <t-form-item
+          v-for="property in filteredProperties"
+          :key="property.name"
+          :label="property.label"
+          :name="property.name"
+          :required="property.required"
         >
-          <option
-            v-for="option in property.options"
-            :key="option.value"
-            :value="option.value"
+          <!-- 字符串属性 -->
+          <t-input
+            v-if="property.type === 'string'"
+            v-model="formData[property.name]"
+            :placeholder="`请输入${property.label}`"
+            @change="(value) => handleStringInput(value, property.name)"
+          />
+
+          <!-- 数字属性 -->
+          <t-input-number
+            v-else-if="property.type === 'number'"
+            v-model="formData[property.name]"
+            :placeholder="`请输入${property.label}`"
+            @change="(value) => handleNumberInput(value, property.name)"
+          />
+
+          <!-- 布尔属性 -->
+          <t-switch
+            v-else-if="property.type === 'boolean'"
+            v-model="formData[property.name]"
+            @change="(value) => handleBooleanChange(value, property.name)"
+          />
+
+          <!-- 选择属性 -->
+          <t-select
+            v-else-if="property.type === 'select'"
+            v-model="formData[property.name]"
+            :placeholder="`请选择${property.label}`"
+            @change="(value) => handleSelectChange(value, property.name)"
           >
-            {{ option.label }}
-          </option>
-        </select>
+            <t-option
+              v-for="option in property.options"
+              :key="option.value"
+              :value="option.value"
+              :label="option.label"
+            />
+          </t-select>
 
-        <!-- 颜色属性 -->
-        <input
-          v-else-if="property.type === 'color'"
-          type="color"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
-          class="property-color"
-        />
+          <!-- 颜色属性 -->
+          <t-color-picker
+            v-else-if="property.type === 'color'"
+            v-model="formData[property.name]"
+            @change="(value) => handleColorInput(value, property.name)"
+          />
 
-        <!-- 表达式属性 -->
-        <textarea
-          v-else-if="property.type === 'expression'"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
-          class="property-textarea"
-          rows="3"
-        ></textarea>
+          <!-- 表达式属性 -->
+          <t-textarea
+            v-else-if="property.type === 'expression'"
+            v-model="formData[property.name]"
+            :placeholder="`请输入${property.label}`"
+            :autosize="{ minRows: 3, maxRows: 6 }"
+            @change="(value) => handleTextareaInput(value, property.name)"
+          />
 
-        <!-- 方法属性 -->
-        <textarea
-          v-else-if="property.type === 'method'"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, (e.target as HTMLTextAreaElement).value)"
-          class="property-textarea"
-          rows="3"
-          placeholder="输入方法名称"
-        ></textarea>
+          <!-- 方法属性 -->
+          <t-textarea
+            v-else-if="property.type === 'method'"
+            v-model="formData[property.name]"
+            placeholder="输入方法名称"
+            :autosize="{ minRows: 3, maxRows: 6 }"
+            @change="(value) => handleTextareaInput(value, property.name)"
+          />
 
-        <!-- 默认输入 -->
-        <input
-          v-else
-          type="text"
-          :value="component[property.name]"
-          @input="(e: any) => updateProperty(property.name, (e.target as HTMLInputElement).value)"
-          class="property-input"
-        />
-      </div>
+          <!-- 默认输入 -->
+          <t-input
+            v-else
+            v-model="formData[property.name]"
+            :placeholder="`请输入${property.label}`"
+            @change="(value) => handleStringInput(value, property.name)"
+          />
+        </t-form-item>
 
-      <!-- 特殊属性：子组件 -->
-      <div v-if="hasChildren" class="property-item">
-        <div class="property-label">子组件</div>
-        <div class="children-count">
-          {{ childrenCount }} 个子组件
-          <button class="add-child-btn" @click="openAddDialog">
-            添加子组件
-          </button>
-        </div>
-      </div>
-    </template>
-    <AddComponentDialog
-      v-if="showAddDialog"
-      :show="showAddDialog"
-      @close="closeAddDialog"
-      @add="handleAddComponent"
-    />
+        <!-- 特殊属性：子组件 -->
+        <t-form-item v-if="hasChildren" label="子组件">
+          <div class="children-info">
+            <t-space align="center">
+              <t-tag theme="primary" variant="light">
+                {{ childrenCount }} 个子组件
+              </t-tag>
+              <t-button
+                theme="primary"
+                size="small"
+                @click="handleAddComponentClick"
+              >
+                <template #icon>
+                  <AddIcon />
+                </template>
+                添加子组件
+              </t-button>
+            </t-space>
+          </div>
+        </t-form-item>
+      </t-form>
+    </t-card>
   </div>
 </template>
 
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch, reactive } from 'vue';
 import { ComponentConfig } from "fast-json-ui-vue";
 import { WidgetFactory } from "fast-json-ui-vue";
-import AddComponentDialog from "./AddComponentDialog.vue";
+import { AddIcon } from 'tdesign-icons-vue-next';
 
 // Props
 const props = defineProps({
@@ -133,12 +130,35 @@ const props = defineProps({
     type: Object as () => WidgetFactory.WidgetMeta | undefined,
     default: undefined,
   },
+  path: {
+    type: Array as () => string[],
+    default: () => [],
+  },
 });
 
 // Emits
-const emit = defineEmits(["update"]);
+const emit = defineEmits<{
+  update: [name: string, value: any];
+  addComponent: [path: string[]];
+}>();
 
-// 新增：过滤掉 child/children 的属性
+// 表单数据
+const formData = reactive<Record<string, any>>({});
+
+// 监听组件变化，同步表单数据
+watch(
+  () => props.component,
+  (newComponent) => {
+    if (newComponent && props.meta?.properties) {
+      props.meta.properties.forEach((property) => {
+        formData[property.name] = newComponent[property.name];
+      });
+    }
+  },
+  { immediate: true, deep: true }
+);
+
+// 过滤掉 child/children 的属性
 const filteredProperties = computed(() => {
   return (
     props.meta?.properties?.filter(
@@ -147,9 +167,12 @@ const filteredProperties = computed(() => {
   );
 });
 
-// 是否有子组件
+// 是否有子组件 - 只对容器类型组件显示添加按钮
 const hasChildren = computed(() => {
-  return props.component.children || props.component.child;
+  const containerTypes = [
+    'container', 'row', 'column', 'stack', 'card', 'tabs', 'collapse', 'modal', 'drawer'
+  ];
+  return containerTypes.includes(props.component.type || '');
 });
 
 // 子组件数量
@@ -162,117 +185,107 @@ const childrenCount = computed(() => {
   return 0;
 });
 
-// 新增：添加子组件弹窗逻辑
-const showAddDialog = ref(false);
-function openAddDialog() {
-  showAddDialog.value = true;
-}
-function closeAddDialog() {
-  showAddDialog.value = false;
-}
-function handleAddComponent(type: string) {
-  const metaToAdd = (
-    Object.values(WidgetFactory.getWidgetRegistry()) as any[]
-  ).find((reg) => reg.metadata.type === type)?.metadata;
-  if (metaToAdd) {
-    if (Array.isArray(props.component.children)) {
-      props.component.children.push(
-        JSON.parse(JSON.stringify(metaToAdd.defaultConfig))
-      );
-    } else if (props.component.child === undefined) {
-      props.component.child = JSON.parse(
-        JSON.stringify(metaToAdd.defaultConfig)
-      );
-    }
-    emit("update", "", "");
-  }
-  closeAddDialog();
+// 添加子组件逻辑
+function handleAddComponentClick() {
+  // 发出事件，让父组件处理添加组件逻辑
+  emit("addComponent", props.path || []);
 }
 
 // 更新属性
 function updateProperty(name: string, value: any) {
-  emit("update", props.component, name, value);
+  emit("update", name, value);
+}
+
+// 事件处理方法
+function handleStringInput(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+function handleNumberInput(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+function handleBooleanChange(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+function handleSelectChange(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+function handleColorInput(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+function handleTextareaInput(value: any, propertyName: string) {
+  updateProperty(propertyName, value);
+}
+
+// 表单提交（可选）
+function onSubmit() {
+  // 可以在这里处理表单提交逻辑
 }
 </script>
 
 <style scoped>
 .property-editor {
-  padding: 8px;
+  padding: 16px;
+  background: var(--td-bg-color-container);
 }
 
 .no-properties {
-  color: #999;
-  font-style: italic;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 200px;
 }
 
 .property-type {
   margin-bottom: 16px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid #eee;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--td-border-level-1-color);
 }
 
-.property-item {
-  margin-bottom: 12px;
+.children-info {
+  padding: 12px;
+  background: var(--td-bg-color-container-hover);
+  border-radius: var(--td-radius-default);
+  border: 1px solid var(--td-border-level-1-color);
 }
 
-.property-label {
-  margin-bottom: 4px;
-  font-size: 14px;
-  color: #333;
+:deep(.t-form-item) {
+  margin-bottom: 16px;
 }
 
-.required {
-  color: #f5222d;
-  margin-left: 4px;
+:deep(.t-form__label) {
+  font-weight: 500;
+  color: var(--td-text-color-primary);
 }
 
-.property-input,
-.property-select,
-.property-textarea {
+:deep(.t-input),
+:deep(.t-textarea),
+:deep(.t-select),
+:deep(.t-input-number) {
   width: 100%;
-  padding: 6px 8px;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
-  font-size: 14px;
 }
 
-.property-input:focus,
-.property-select:focus,
-.property-textarea:focus {
-  border-color: #40a9ff;
-  outline: none;
-  box-shadow: 0 0 0 2px rgba(24, 144, 255, 0.2);
+:deep(.t-color-picker) {
+  width: 100%;
 }
 
-.property-checkbox {
-  margin-right: 8px;
-}
-
-.property-color {
+:deep(.t-color-picker .t-color-picker__trigger) {
   width: 100%;
   height: 32px;
-  padding: 0;
-  border: 1px solid #d9d9d9;
-  border-radius: 4px;
 }
 
-.children-count {
-  color: #666;
-  font-size: 14px;
-}
-
-.add-child-btn {
-  margin-left: 12px;
-  font-size: 12px;
-  padding: 2px 8px;
-  border: 1px solid #1890ff;
-  background: #fff;
-  color: #1890ff;
-  border-radius: 3px;
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s;
-}
-.add-child-btn:hover {
-  background: #e6f7ff;
+/* 响应式设计 */
+@media (max-width: 768px) {
+  .property-editor {
+    padding: 12px;
+  }
+  
+  :deep(.t-form) {
+    --td-form-label-width: 60px;
+  }
 }
 </style>

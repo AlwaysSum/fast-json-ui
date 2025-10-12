@@ -3,3 +3,6 @@ ui-vue/node_modules
 document-site/node_modules
 ui-vue-editor/node_modules
 ui-vue-editor/dist
+amis-editor
+amis-editor/*
+amis-editor/node_modules

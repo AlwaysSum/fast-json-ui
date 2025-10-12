@@ -6,11 +6,16 @@
       'is-editor': config.isEditor,
       'is-hoverable': config.isEditor && !config.isSelected,
       'is-layout': hasChildren || hasSingleChild,
-      'is-drag-over': isDragOver && hasChildren,
+      'is-drag-over': isDragOver,
+      'can-drop': canAcceptDrop,
     }"
     @click.stop="selectComponent"
     @mouseenter="setHovered(true)"
     @mouseleave="setHovered(false)"
+    @dragenter="onDragEnter"
+    @dragleave="onDragLeave"
+    @dragover="onDragOver"
+    @drop="onDropToComponent"
   >
     <!-- 编辑模式下的操作按钮 -->
     <div class="component-actions" v-if="config.isEditor && config.isSelected">
@@ -20,22 +25,25 @@
     </div>
 
     <div class="component-content">
+      <!-- 拖拽位置指示器 -->
+      <div v-if="isDragOver && dropPosition" class="drop-indicator" :class="`drop-${dropPosition}`">
+        <div class="drop-line"></div>
+      </div>
+      
       <!-- 布局型组件支持拖拽接收 -->
       <div
         v-if="hasChildren"
         class="drop-container"
-        @dragenter="onDragEnter"
-        @dragleave="onDragLeave"
-        @dragover="onDragOver"
-        @drop="onDropToContainer"
       >
         <fast-json-widget
-          :config="props.config.child"
+          v-for="(child, index) in props.config.children"
+          :key="index"
+          :config="child"
           :data="props.data"
           :methods="props.methods"
         />
       </div>
-      <template v-else>
+      <template v-else-if="hasSingleChild && props.config.child">
         <fast-json-widget
           :config="props.config.child"
           :data="props.data"
@@ -81,6 +89,16 @@ const isHovered = ref(false);
 
 // 拖拽覆盖状态
 const isDragOver = ref(false);
+
+// 判断是否可以接受拖拽
+const canAcceptDrop = computed(() => {
+  // 容器类组件可以接受拖拽
+  const containerTypes = ['container', 'row', 'column', 'stack'];
+  return containerTypes.includes(props.config.type);
+});
+
+// 拖拽位置指示器
+const dropPosition = ref<'before' | 'after' | 'inside' | null>(null);
 
 // 设置悬停状态
 function setHovered(hovered: boolean) {
@@ -289,33 +307,66 @@ function onDragChange(event: any) {
 // 新增：拖拽到容器
 function onDragEnter(event: DragEvent) {
   event.preventDefault();
-  isDragOver.value = true;
+  if (canAcceptDrop.value) {
+    isDragOver.value = true;
+    calculateDropPosition(event);
+  }
 }
 
 function onDragLeave(event: DragEvent) {
   event.preventDefault();
-  isDragOver.value = false;
+  // 检查是否真的离开了组件区域
+  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+  const x = event.clientX;
+  const y = event.clientY;
+  
+  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
+    isDragOver.value = false;
+    dropPosition.value = null;
+  }
 }
 
 function onDragOver(event: DragEvent) {
   event.preventDefault();
-  isDragOver.value = true;
+  if (canAcceptDrop.value) {
+    isDragOver.value = true;
+    calculateDropPosition(event);
+  }
 }
 
-function onDropToContainer(event: DragEvent) {
+function calculateDropPosition(event: DragEvent) {
+  const element = event.currentTarget as HTMLElement;
+  const rect = element.getBoundingClientRect();
+  const y = event.clientY - rect.top;
+  const height = rect.height;
+  
+  if (hasChildren.value || hasSingleChild.value) {
+    // 容器组件：支持内部插入
+    dropPosition.value = 'inside';
+  } else {
+    // 普通组件：支持前后插入
+    if (y < height / 2) {
+      dropPosition.value = 'before';
+    } else {
+      dropPosition.value = 'after';
+    }
+  }
+}
+
+function onDropToComponent(event: DragEvent) {
   event.preventDefault();
-  event.stopPropagation(); // 关键：阻止冒泡，优先最内层容器
+  event.stopPropagation();
   isDragOver.value = false;
+  dropPosition.value = null;
+  
   if (event.dataTransfer) {
     const data = event.dataTransfer.getData("application/json");
     if (data) {
       try {
         const newComponent = JSON.parse(data);
-        if (
-          props.methods &&
-          typeof props.methods.onDropToContainer === "function"
-        ) {
-          props.methods.onDropToContainer(newComponent, props.config.path);
+        if (props.methods && typeof props.methods.onDropToContainer === "function") {
+          // 根据拖拽位置调用不同的处理逻辑
+          props.methods.onDropToContainer(newComponent, props.config.path, dropPosition.value);
         }
       } catch (e) {
         console.error("Failed to parse dropped component", e);
@@ -448,5 +499,48 @@ function onDropToContainer(event: DragEvent) {
 .component-wrapper.is-drag-over {
   outline: 2px solid #1890ff;
   background: #e6f7ff;
+}
+
+/* 拖拽位置指示器样式 */
+.drop-indicator {
+  position: absolute;
+  z-index: 10;
+  pointer-events: none;
+}
+
+.drop-indicator.drop-before {
+  top: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.drop-indicator.drop-after {
+  bottom: -2px;
+  left: 0;
+  right: 0;
+  height: 4px;
+}
+
+.drop-indicator.drop-inside {
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border: 2px dashed #1890ff;
+  background: rgba(24, 144, 255, 0.1);
+}
+
+.drop-line {
+  width: 100%;
+  height: 100%;
+  background: #1890ff;
+  border-radius: 2px;
+}
+
+/* 可接受拖拽的组件样式 */
+.component-wrapper.can-drop.is-drag-over {
+  transform: scale(1.02);
+  box-shadow: 0 4px 12px rgba(24, 144, 255, 0.3);
 }
 </style>

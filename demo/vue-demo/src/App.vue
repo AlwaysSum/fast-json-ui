@@ -142,7 +142,6 @@ body {
 
 .admin-content {
   margin-left: 200px;
-  margin-top: 64px;
   flex: 1;
   padding: 32px;
   min-width: 0;

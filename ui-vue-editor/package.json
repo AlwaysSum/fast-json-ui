@@ -42,6 +42,8 @@
   },
   "dependencies": {
     "fast-json-ui-vue": "../ui-vue",
+    "tdesign-icons-vue-next": "^0.4.1",
+    "tdesign-vue-next": "^1.17.1",
     "vue": "^3.2.47",
     "vuedraggable": "^4.1.0"
   },

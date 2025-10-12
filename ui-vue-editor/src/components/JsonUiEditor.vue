@@ -1,17 +1,29 @@
 <template>
   <div class="json-ui-editor" :class="{ 'preview-mode': state.previewMode }">
     <!-- 顶部工具栏 -->
-    <div class="main-toolbar">
-      <div class="logo">Fast-JSON-UI 编辑器</div>
-      <div class="actions">
-        <button class="btn btn-primary" @click="exportJson">导出 JSON</button>
-        <button class="btn" @click="togglePreviewMode">
-          {{ state.previewMode ? "编辑模式" : "预览模式" }}
-        </button>
-      </div>
-    </div>
+    <ToolbarArea
+      :mode="state.previewMode ? 'preview' : 'edit'"
+      :canUndo="state.undoStack.length > 0"
+      :canRedo="state.redoStack.length > 0"
+      @modeChange="onModeChange"
+      @undo="undo"
+      @redo="redo"
+      @clearAll="clearCanvas"
+      @copyConfig="copyConfig"
+      @pasteConfig="pasteConfig"
+      @deviceChange="onDeviceChange"
+      @exportConfig="exportJson"
+      @importConfig="importJson"
+    />
 
     <div class="editor-layout">
+      <!-- 组件面板 - 暂时隐藏 -->
+      <!-- <ComponentPanel
+        v-if="!state.previewMode"
+        @dragComponent="onDragComponent"
+        @addComponent="onAddComponent"
+      /> -->
+      
       <!-- 层级面板 -->
       <HierarchyPanel
         :root="state.rootComponent"
@@ -45,15 +57,16 @@
           </button>
         </div>
 
-        <div class="canvas-container" @dragover.prevent @drop="onDrop">
-          <div class="canvas">
-            <fast-json-widget
-              :config="renderConfig"
-              :data="renderData"
-              :methods="renderMethods"
-            />
-          </div>
-        </div>
+        <CanvasArea
+          :config="renderConfig"
+          :data="renderData"
+          :methods="renderMethods"
+          @addComponent="onAddComponentToCanvas"
+          @clearCanvas="clearCanvas"
+          @previewMode="togglePreviewMode"
+          @drop="onDropToContainer"
+        @move="onMoveComponent"
+        />
       </div>
       <div class="property-panel" v-if="!state.previewMode">
         <div class="tabs">
@@ -80,7 +93,9 @@
               <property-editor
                 :component="state.selectedComponent"
                 :meta="getComponentMetaByType(state.selectedComponent.type)"
+                :path="state.componentPath"
                 @update="updateComponentProperty"
+                @addComponent="onPropertyAddComponent"
               />
             </div>
             <div v-else class="no-selection">请选择一个组件来编辑其属性</div>
@@ -103,6 +118,13 @@
         </div>
       </div>
     </div>
+    
+    <!-- 组件选择对话框 -->
+      <AddComponentDialog
+        :show="showAddComponentDialog"
+        @close="onComponentDialogCancel"
+        @add="onComponentSelected"
+      />
   </div>
 </template>
 
@@ -118,10 +140,15 @@ import {
 } from "vue";
 import ComponentRenderer from "./ComponentRenderer.vue";
 import PropertyEditor from "./PropertyEditor.vue";
+import ComponentPanel from "./ComponentPanel.vue";
+import CanvasArea from "./CanvasArea.vue";
+import ToolbarArea from "./ToolbarArea.vue";
+import AddComponentDialog from "./AddComponentDialog.vue";
 import { ComponentConfig } from "../types";
 import { WidgetFactory } from "fast-json-ui-vue";
 import { registerComponent } from "fast-json-ui-vue";
 import HierarchyPanel from "./HierarchyPanel.vue";
+import type { WidgetMeta } from 'fast-json-ui-vue/src/components/WidgetFactory';
 
 //注册组件
 registerComponent("ComponentRenderer", ComponentRenderer, {
@@ -214,24 +241,24 @@ function wrapWithRenderer(
       return { type: "text", text: "请添加组件" };
     }
     if (config.child?.type && config.child.type !== "ComponentRenderer") {
-      config.child = wrapWithRenderer(config.child, currentPath);
+      config.child = wrapWithRenderer(config.child, [...currentPath, "child"]);
     }
     return config;
   }
 
   // 处理子组件
   if (config.children) {
-    config.children = config.children.map((child: ComponentConfig) =>
+    config.children = config.children.map((child: ComponentConfig, index: number) =>
       child.type === "ComponentRenderer"
         ? child
-        : wrapWithRenderer(child, currentPath)
+        : wrapWithRenderer(child, [...currentPath, "children", String(index)])
     );
   }
   if (config.child) {
     config.child =
       config.child.type === "ComponentRenderer"
         ? config.child
-        : wrapWithRenderer(config.child, currentPath);
+        : wrapWithRenderer(config.child, [...currentPath, "child"]);
   }
 
   // 包装当前组件
@@ -239,7 +266,7 @@ function wrapWithRenderer(
     type: "ComponentRenderer",
     child: config,
     isEditor: !state.previewMode,
-    path: [...currentPath, config.type],
+    path: currentPath,
     onTap: "@{selectComponent(${config}, ${path})}",
     onUpdate: "@{updateComponent(${config}, ${path})}",
     onRemove: "@{removeComponent(${path})}",
@@ -247,10 +274,10 @@ function wrapWithRenderer(
   };
 }
 
-const renderData = ref({
+const renderData = computed(() => ({
   component: state.selectedComponent,
   path: state.componentPath,
-});
+}));
 
 const renderMethods = ref({
   selectComponent: selectComponent,
@@ -268,6 +295,10 @@ const globalFunctions = ref<Record<string, any>>({});
 // 新增：当前树选中路径
 const selectedTreePath = ref<string[]>([]);
 
+// 组件选择对话框状态
+const showAddComponentDialog = ref(false);
+const addComponentTarget = ref<{ path: string[], position?: string } | null>(null);
+
 function getComponentMetaByType(type: string) {
   console.log(
     "WidgetFactory.getWidgetRegistry()",
@@ -280,13 +311,26 @@ function getComponentMetaByType(type: string) {
   )?.metadata;
 }
 
+// 组件面板相关方法
+function onDragComponent(widget: WidgetMeta) {
+  // 可以在这里处理拖拽开始的逻辑
+  console.log('开始拖拽组件:', widget.name);
+}
+
+function onAddComponent(widget: WidgetMeta) {
+  // 直接添加组件到根容器
+  const newComponent = { ...widget.defaultConfig };
+  addComponent(newComponent);
+}
+
 function onDrop(event: DragEvent) {
   event.preventDefault();
   if (event.dataTransfer) {
     const data = event.dataTransfer.getData("application/json");
     if (data) {
       try {
-        const newComponent = JSON.parse(data);
+        const widget = JSON.parse(data) as WidgetMeta;
+        const newComponent = { ...widget.defaultConfig };
         addComponent(newComponent);
       } catch (e) {
         console.error("Failed to parse dropped component", e);
@@ -304,6 +348,31 @@ function addComponent(component: ComponentConfig) {
   }
 
   state.rootComponent.children.push(component);
+  updateConfig();
+}
+
+// 画布区域相关方法
+function onAddComponentToCanvas(widget: WidgetMeta) {
+  const newComponent = { ...widget.defaultConfig };
+  addComponent(newComponent);
+}
+
+function clearCanvas() {
+  // 保存当前状态到撤销栈
+  saveToUndoStack();
+  
+  // 清空根组件的子组件
+  if (state.rootComponent.children) {
+    state.rootComponent.children = [];
+  }
+  if (state.rootComponent.child) {
+    delete state.rootComponent.child;
+  }
+  
+  // 清除选中状态
+  state.selectedComponent = null;
+  state.componentPath = [];
+  
   updateConfig();
 }
 
@@ -352,7 +421,6 @@ function updateComponent(component: ComponentConfig, path: string[]) {
 }
 
 function updateComponentProperty(
-  component: ComponentConfig,
   property: string,
   value: any
 ) {
@@ -360,8 +428,8 @@ function updateComponentProperty(
   saveToUndoStack();
 
   // 更新属性
-  if (component) {
-    component[property] = value;
+  if (state.selectedComponent) {
+    state.selectedComponent[property] = value;
     updateConfig();
   }
 }
@@ -520,6 +588,73 @@ function exportJson() {
   emit("export", cleanConfig);
 }
 
+// 工具栏相关方法
+function onModeChange(mode: 'edit' | 'preview') {
+  state.previewMode = mode === 'preview';
+}
+
+function copyConfig() {
+  const cleanConfig = stripComponentRenderer(state.rootComponent);
+  navigator.clipboard.writeText(JSON.stringify(cleanConfig, null, 2))
+    .then(() => {
+      console.log('配置已复制到剪贴板');
+    })
+    .catch(err => {
+      console.error('复制失败:', err);
+    });
+}
+
+function pasteConfig() {
+  navigator.clipboard.readText()
+    .then(text => {
+      try {
+        const config = JSON.parse(text);
+        // 保存当前状态到撤销栈
+        saveToUndoStack();
+        state.rootComponent = config;
+        updateConfig();
+        console.log('配置已从剪贴板粘贴');
+      } catch (err) {
+        console.error('粘贴失败，无效的 JSON 格式:', err);
+      }
+    })
+    .catch(err => {
+      console.error('读取剪贴板失败:', err);
+    });
+}
+
+function onDeviceChange(device: string) {
+  console.log('设备切换:', device);
+  // 可以在这里实现设备预览功能
+}
+
+function importJson() {
+  // 创建文件输入元素
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const config = JSON.parse(e.target?.result as string);
+          // 保存当前状态到撤销栈
+          saveToUndoStack();
+          state.rootComponent = config;
+          updateConfig();
+          console.log('配置已导入');
+        } catch (err) {
+          console.error('导入失败，无效的 JSON 格式:', err);
+        }
+      };
+      reader.readAsText(file);
+    }
+  };
+  input.click();
+}
+
 function updateConfig() {
   emit("update:config", state.rootComponent);
 }
@@ -533,27 +668,91 @@ function updateGlobalFunctions(functions: Record<string, any>) {
   globalFunctions.value = functions;
 }
 
-// 新增：拖拽到任意容器
-function onDropToContainer(component: ComponentConfig, path: string[]) {
-  // 保存当前状态到撤销栈
+// 画布拖拽处理
+function onDropToContainer(newComponent: any, path: string[], position?: string) {
+  console.log('=== onDropToContainer Debug ===');
+  console.log('New component:', newComponent);
+  console.log('Path:', path);
+  console.log('Position:', position);
+  console.log('Root component:', state.rootComponent);
+  
   saveToUndoStack();
-  // 根据 path 定位到目标容器
+  
+  // 根据路径找到目标容器
   let current = state.rootComponent;
+  let parent = null;
+  let parentKey = '';
+  
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
+    parent = current;
+    parentKey = key;
+    
     if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
-      if (!isNaN(idx)) {
+      if (!isNaN(idx) && current.children && current.children[idx]) {
         current = current.children[idx];
         i++;
+      } else {
+        console.error(`Cannot find children[${idx}] in:`, current);
+        return;
       }
+    } else if (key === "child" && current.child) {
+      current = current.child;
+    } else {
+      console.error(`Cannot handle key "${key}" with current:`, current);
+      return;
     }
   }
-  // 如果目标容器有 children，则 push
-  if (current && Array.isArray(current.children)) {
-    current.children.push(component);
-    updateConfig();
+  
+  console.log('Target current:', current);
+  console.log('Parent:', parent);
+  console.log('Parent key:', parentKey);
+  
+  // 根据位置和组件类型决定插入逻辑
+  if (position === 'inside' || (!position && (current.type === 'container' || current.type === 'row' || current.type === 'column' || current.type === 'stack'))) {
+    // 插入到容器内部
+    if (current.type === 'container' || current.type === 'row' || current.type === 'column') {
+      // 多子组件容器
+      if (!current.children) {
+        current.children = [];
+      }
+      current.children.push(newComponent);
+    } else if (current.type === 'stack') {
+      // 单子组件容器
+      current.child = newComponent;
+    }
+  } else if (position === 'before' || position === 'after') {
+    // 插入到组件前后
+    if (parent && parentKey === 'children') {
+      // 在兄弟组件中插入
+      const siblings = parent.children;
+      if (siblings) {
+        const currentIndex = siblings.indexOf(current);
+        const insertIndex = position === 'before' ? currentIndex : currentIndex + 1;
+        siblings.splice(insertIndex, 0, newComponent);
+      }
+    } else if (parent && parentKey === 'child') {
+      // 将单子组件转换为多子组件容器
+      if (parent.type === 'container' || parent.type === 'row' || parent.type === 'column') {
+        parent.children = position === 'before' ? [newComponent, current] : [current, newComponent];
+        delete parent.child;
+      }
+    }
+  } else {
+    // 默认行为：添加到容器内部
+    if (current.type === 'container' || current.type === 'row' || current.type === 'column') {
+      if (!current.children) {
+        current.children = [];
+      }
+      current.children.push(newComponent);
+    } else if (current.type === 'stack') {
+      current.child = newComponent;
+    }
   }
+  
+  console.log('Updated root component:', state.rootComponent);
+  updateConfig();
 }
 
 // 选中树节点时联动选中组件
@@ -565,16 +764,29 @@ function onTreeSelect(path: string[]) {
     const key = path[i];
     if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
-      if (!isNaN(idx)) {
+      if (!isNaN(idx) && current.children && current.children[idx]) {
         current = current.children[idx];
         i++;
+      } else {
+        console.warn('Invalid children index or missing children array:', idx, current);
+        return;
       }
     } else if (key === "child") {
-      current = current.child;
+      if (current.child) {
+        current = current.child;
+      } else {
+        console.warn('Missing child property:', current);
+        return;
+      }
     }
   }
-  state.selectedComponent = current;
-  state.componentPath = path;
+  
+  if (current && current.type) {
+    state.selectedComponent = current;
+    state.componentPath = path;
+  } else {
+    console.warn('Invalid component found at path:', path, current);
+  }
 }
 
 // 画布选中时联动树
@@ -585,30 +797,97 @@ watch(
   }
 );
 
-// 层级树操作：添加组件（默认添加文本）
+// 层级树操作：添加组件（打开组件选择对话框）
 function onTreeAdd(path: string[]) {
+  addComponentTarget.value = { path };
+  showAddComponentDialog.value = true;
+}
+
+// 处理组件选择对话框的组件选择
+function onComponentSelected(componentType: string) {
+  if (!addComponentTarget.value) return;
+  
   saveToUndoStack();
+  
+  const { path } = addComponentTarget.value;
+  console.log('=== onComponentSelected Debug ===');
+  console.log('Component type:', componentType);
+  console.log('Target path:', path);
+  console.log('Root component:', state.rootComponent);
+  
+  // 根据组件类型创建新组件
+  const widgetRegistry = WidgetFactory.getWidgetRegistry();
+  const widgetMeta = widgetRegistry[componentType];
+  const newComponent = widgetMeta?.metadata?.defaultConfig || { type: componentType };
+  
   let current = state.rootComponent;
+  console.log('Starting traversal from root:', current);
+  
   for (let i = 0; i < path.length; i++) {
     const key = path[i];
+    console.log(`Step ${i}: key="${key}", current:`, current);
+    
     if (key === "children" && i + 1 < path.length) {
       const idx = parseInt(path[i + 1]);
-      if (!isNaN(idx)) {
+      if (!isNaN(idx) && current.children && current.children[idx]) {
         current = current.children[idx];
+        console.log(`Navigated to children[${idx}]:`, current);
         i++;
+      } else {
+        console.warn('Invalid children navigation:', idx, current.children);
+        return;
       }
     } else if (key === "child") {
-      current = current.child;
+      if (current.child) {
+        current = current.child;
+        console.log('Navigated to child:', current);
+      } else {
+        console.warn('No child property found:', current);
+        return;
+      }
     }
   }
-  // 支持 children/child
+  
+  console.log('Final target container:', current);
+  
+  // 优先使用 children 数组，确保新组件被添加而不是替换
   if (Array.isArray(current.children)) {
-    current.children.push({ type: "text", text: "新文本" });
-    updateConfig();
-  } else if (current.child === undefined) {
-    current.child = { type: "text", text: "新文本" };
-    updateConfig();
+    // 如果已经有 children 数组，直接添加
+    console.log('Adding to existing children array');
+    current.children.push(newComponent);
+  } else if (current.child !== undefined) {
+    // 如果只有一个 child，将其转换为 children 数组
+    console.log('Converting child to children array');
+    current.children = [current.child, newComponent];
+    delete current.child;
+  } else if (current.children === undefined) {
+    // 如果没有子组件，创建 children 数组
+    console.log('Creating new children array');
+    current.children = [newComponent];
+  } else {
+    // 如果 children 是空数组，直接添加
+    console.log('Adding to empty children array');
+    current.children.push(newComponent);
   }
+  
+  console.log('Updated container:', current);
+  updateConfig();
+  
+  // 关闭对话框
+  showAddComponentDialog.value = false;
+  addComponentTarget.value = null;
+}
+
+// 处理组件选择对话框的取消
+function onComponentDialogCancel() {
+  showAddComponentDialog.value = false;
+  addComponentTarget.value = null;
+}
+
+// 处理属性面板的添加组件事件
+function onPropertyAddComponent(path: string[]) {
+  addComponentTarget.value = { path };
+  showAddComponentDialog.value = true;
 }
 
 // 层级树操作：删除组件
@@ -694,25 +973,79 @@ function onTreeMoveDown(path: string[]) {
 }
 
 // 层级树拖拽添加组件
-function onTreeDropComponent(component: any, path: string[]) {
+function onTreeDropComponent(widget: any, targetPath: string, position?: 'before' | 'after' | 'inside') {
+  console.log('onTreeDropComponent:', widget, 'to path:', targetPath, 'position:', position);
+  
+  if (!targetPath) {
+    console.warn('Empty target path for tree drop');
+    return;
+  }
+
   saveToUndoStack();
-  let current = state.rootComponent;
-  for (let i = 0; i < path.length; i++) {
-    const key = path[i];
-    if (key === "children" && i + 1 < path.length) {
-      const idx = parseInt(path[i + 1]);
-      if (!isNaN(idx)) {
-        current = current.children[idx];
-        i++;
+
+  // 创建新组件
+  const newComponent = {
+    type: widget.type,
+    props: { ...widget.defaultProps },
+    children: widget.type === 'container' || widget.type === 'row' || widget.type === 'column' || widget.type === 'stack' ? [] : undefined
+  };
+
+  // 获取目标路径的父路径和索引
+  const pathParts = targetPath.split('.');
+  const targetIndex = parseInt(pathParts.pop() || '0');
+  const parentPath = pathParts.join('.');
+
+  let insertIndex = targetIndex;
+  let insertPath = parentPath;
+
+  // 根据位置调整插入逻辑
+  if (position === 'before') {
+    // 插入到目标组件之前
+    insertIndex = targetIndex;
+  } else if (position === 'after') {
+    // 插入到目标组件之后
+    insertIndex = targetIndex + 1;
+  } else if (position === 'inside') {
+    // 插入到目标组件内部（仅对容器类组件有效）
+    insertPath = targetPath;
+    insertIndex = 0; // 插入到容器的第一个位置
+  }
+
+  console.log('Calculated insert path:', insertPath, 'index:', insertIndex);
+
+  // 获取目标容器
+  let targetContainer = state.rootComponent;
+  if (insertPath) {
+    const pathArray = insertPath.split('.').filter(p => p !== '');
+    for (const index of pathArray) {
+      const idx = parseInt(index);
+      if (targetContainer.children && targetContainer.children[idx]) {
+        targetContainer = targetContainer.children[idx];
+      } else {
+        console.error('Invalid path:', insertPath);
+        return;
       }
-    } else if (key === "child") {
-      current = current.child;
     }
   }
-  if (Array.isArray(current.children)) {
-    current.children.push(component);
-    updateConfig();
+
+  // 确保目标容器有 children 数组
+  if (!targetContainer.children) {
+    if (targetContainer.type === 'container' || targetContainer.type === 'row' || 
+        targetContainer.type === 'column' || targetContainer.type === 'stack') {
+      targetContainer.children = [];
+    } else {
+      console.warn('Cannot add children to non-container component:', targetContainer.type);
+      return;
+    }
   }
+
+  // 插入新组件
+  targetContainer.children.splice(insertIndex, 0, newComponent);
+  
+  console.log('Component added successfully. New config:', JSON.stringify(state.rootComponent, null, 2));
+  
+  // 触发更新
+  updateConfig();
 }
 
 // 树节点拖拽排序
@@ -769,171 +1102,116 @@ onMounted(() => {
 .json-ui-editor {
   display: flex;
   flex-direction: column;
-  height: 100%;
-  font-family: Arial, sans-serif;
-  color: #333;
-  background-color: #f5f5f5;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  overflow: hidden;
-}
-
-.main-toolbar {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
-  height: 48px;
-}
-
-.logo {
-  font-size: 18px;
-  font-weight: bold;
-  color: #f56c6c;
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
+  height: 100vh;
+  background: var(--td-bg-color-page);
+  color: var(--td-text-color-primary);
 }
 
 .editor-layout {
   display: flex;
-  flex-direction: row;
   flex: 1;
   overflow: hidden;
-}
-
-.component-panel {
-  width: 240px;
-  padding: 16px;
-  background-color: #fff;
-  border-right: 1px solid #ddd;
-  overflow-y: auto;
 }
 
 .center-panel {
   flex: 1;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-}
-
-.canvas-toolbar {
-  display: flex;
-  padding: 8px 16px;
-  background-color: #fff;
-  border-bottom: 1px solid #ddd;
-  gap: 8px;
-}
-
-.canvas-container {
-  flex: 1;
-  padding: 16px;
-  overflow: auto;
-  background-color: #f9f9f9;
-}
-
-.canvas {
-  min-height: 100%;
-  background-color: #fff;
-  border: 1px dashed #ddd;
-  border-radius: 4px;
-  padding: 16px;
+  background: var(--td-bg-color-container);
 }
 
 .property-panel {
   width: 300px;
-  background-color: #fff;
-  border-left: 1px solid #ddd;
+  background: var(--td-bg-color-container);
+  border-left: 1px solid var(--td-border-level-1-color);
   display: flex;
   flex-direction: column;
 }
 
 .tabs {
   display: flex;
-  border-bottom: 1px solid #ddd;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+  background: var(--td-bg-color-container-hover);
 }
 
 .tab {
+  flex: 1;
   padding: 12px 16px;
+  text-align: center;
   cursor: pointer;
+  font-size: 14px;
+  color: var(--td-text-color-secondary);
   border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.tab:hover {
+  color: var(--td-text-color-primary);
+  background: var(--td-bg-color-container-active);
 }
 
 .tab.active {
-  border-bottom-color: #f56c6c;
-  color: #f56c6c;
+  color: var(--td-brand-color);
+  border-bottom-color: var(--td-brand-color);
+  background: var(--td-bg-color-container);
 }
 
 .tab-content {
   flex: 1;
-  padding: 16px;
   overflow-y: auto;
 }
 
-.component-category {
-  margin-bottom: 16px;
+.properties-tab,
+.globals-tab {
+  height: 100%;
 }
 
-.component-category h4 {
-  margin: 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #eee;
-}
-
-.component-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.component-item {
+.canvas-toolbar {
   display: flex;
   align-items: center;
-  padding: 8px;
-  background-color: #f9f9f9;
-  border: 1px solid #eee;
-  border-radius: 4px;
-  cursor: move;
-  user-select: none;
-}
-
-.component-item:hover {
-  background-color: #f0f0f0;
-}
-
-.component-icon {
-  margin-right: 4px;
+  gap: 8px;
+  padding: 8px 16px;
+  background: var(--td-bg-color-container-hover);
+  border-bottom: 1px solid var(--td-border-level-1-color);
 }
 
 .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 6px 12px;
-  background-color: #fff;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  border: 1px solid var(--td-border-level-1-color);
+  border-radius: var(--td-radius-default);
+  background: var(--td-bg-color-container);
+  color: var(--td-text-color-primary);
+  font-size: 12px;
   cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
 }
 
-.btn:hover {
-  background-color: #f5f5f5;
+.btn:hover:not(:disabled) {
+  background: var(--td-bg-color-container-hover);
+  border-color: var(--td-brand-color);
+  color: var(--td-brand-color);
 }
 
 .btn:disabled {
-  opacity: 0.5;
+  opacity: 0.4;
   cursor: not-allowed;
+  background: var(--td-bg-color-component-disabled);
+  color: var(--td-text-color-disabled);
 }
 
 .btn-primary {
-  background-color: #f56c6c;
-  color: #fff;
-  border-color: #f56c6c;
+  background: var(--td-brand-color);
+  color: var(--td-text-color-anti);
+  border-color: var(--td-brand-color);
 }
 
-.btn-primary:hover {
-  background-color: #e45c5c;
+.btn-primary:hover:not(:disabled) {
+  background: var(--td-brand-color-hover);
+  border-color: var(--td-brand-color-hover);
 }
 
 .btn-sm {
@@ -942,9 +1220,12 @@ onMounted(() => {
 }
 
 .no-selection {
-  color: #999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: var(--td-text-color-placeholder);
   font-style: italic;
-  padding: 16px 0;
 }
 
 /* 预览模式样式 */
@@ -961,5 +1242,25 @@ onMounted(() => {
 :deep(.json-ui-editor.preview-mode) .canvas {
   border: none;
   padding: 0;
+}
+
+/* 响应式设计 */
+@media (max-width: 1024px) {
+  .property-panel {
+    width: 250px;
+  }
+}
+
+@media (max-width: 768px) {
+  .editor-layout {
+    flex-direction: column;
+  }
+  
+  .property-panel {
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid var(--td-border-level-1-color);
+  }
 }
 </style>

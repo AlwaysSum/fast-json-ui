@@ -1,52 +1,89 @@
 <template>
-  <div class="add-component-dialog-mask">
-    <div class="add-component-dialog">
-      <div class="dialog-title">选择要添加的组件</div>
-      <div class="component-panel add-panel">
-        <div
-          class="component-category"
+  <t-dialog
+    :visible="dialogVisible"
+    header="选择要添加的组件"
+    width="800px"
+    :close-on-overlay-click="true"
+    @close="handleClose"
+  >
+    <div class="component-panel">
+      <t-tabs v-model="activeTab" placement="top">
+        <t-tab-panel
           v-for="category in categories"
           :key="category"
+          :value="category"
+          :label="getCategoryName(category)"
         >
-          <h4>{{ getCategoryName(category) }}</h4>
-          <div class="component-list">
+          <div class="component-grid">
             <div
               v-for="component in getComponentsByCategory(category)"
               :key="component.type"
-              class="component-item"
+              class="component-card"
               :class="{ selected: selectedType === component.type }"
               @click="select(component.type)"
             >
-              <span class="component-icon" v-if="component.icon">{{
-                component.icon
-              }}</span>
-              <span class="component-name">{{ component.name }}</span>
+              <div class="component-name">{{ component.name }}</div>
             </div>
           </div>
-        </div>
-      </div>
-      <div class="dialog-actions">
-        <button @click="$emit('close')">取消</button>
-        <button :disabled="!selectedType" @click="add">添加</button>
-      </div>
+        </t-tab-panel>
+      </t-tabs>
     </div>
-  </div>
+    
+    <template #footer>
+      <t-space>
+        <t-button theme="default" @click="handleClose">取消</t-button>
+        <t-button 
+          theme="primary" 
+          :disabled="!selectedType" 
+          @click="handleAdd"
+        >
+          确定添加
+        </t-button>
+      </t-space>
+    </template>
+  </t-dialog>
 </template>
-
 <script lang="ts" setup>
-import { ref, computed } from "vue";
+import { ref, computed, watch } from "vue";
 import { WidgetFactory } from "fast-json-ui-vue";
 
 const props = defineProps<{ show: boolean }>();
 const emit = defineEmits(["close", "add"]);
 
+const visible = computed(() => props.show);
+const dialogVisible = ref(false);
 const selectedType = ref("");
+const activeTab = ref("");
+
+// 监听 show 属性变化
+watch(() => props.show, (newVal) => {
+  dialogVisible.value = newVal;
+  if (newVal) {
+    // 重置选择状态
+    selectedType.value = "";
+    // 设置默认激活的标签页
+    if (categories.value.length > 0) {
+      activeTab.value = categories.value[0];
+    }
+  }
+});
+
 function select(type: string) {
   selectedType.value = type;
 }
-function add() {
-  emit("add", selectedType.value);
+
+function handleAdd() {
+  if (selectedType.value) {
+    emit("add", selectedType.value);
+    selectedType.value = "";
+    dialogVisible.value = false;
+  }
+}
+
+function handleClose() {
   selectedType.value = "";
+  dialogVisible.value = false;
+  emit('close');
 }
 
 const categories = computed(() => {
@@ -60,20 +97,21 @@ const categories = computed(() => {
   });
   return Array.from(set);
 });
+
 function getCategoryName(category: string) {
-  switch (category) {
-    case "basic":
-      return "基础组件";
-    case "layout":
-      return "布局组件";
-    case "form":
-      return "表单组件";
-    case "custom":
-      return "自定义组件";
-    default:
-      return category;
-  }
+  const categoryMap: Record<string, string> = {
+    basic: "基础组件",
+    layout: "布局组件", 
+    form: "表单组件",
+    custom: "自定义组件",
+    display: "展示组件",
+    feedback: "反馈组件",
+    navigation: "导航组件",
+    other: "其他组件"
+  };
+  return categoryMap[category] || category;
 }
+
 function getComponentsByCategory(category: string) {
   return Object.values(WidgetFactory.getWidgetRegistry())
     .filter(
@@ -84,96 +122,170 @@ function getComponentsByCategory(category: string) {
 </script>
 
 <style scoped>
-.add-component-dialog-mask {
+.add-component-dialog {
   position: fixed;
-  left: 0;
   top: 0;
+  left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.18);
   z-index: 1000;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.add-component-dialog {
-  background: #fff;
-  border-radius: 6px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.13);
-  padding: 24px 28px 18px 28px;
-  min-width: 340px;
+
+.dialog-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+}
+
+.dialog-content {
+  position: relative;
+  background: white;
+  border-radius: 8px;
+  width: 600px;
+  max-height: 80vh;
+  overflow: hidden;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+}
+
+.dialog-header {
   display: flex;
-  flex-direction: column;
-  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px 20px;
+  border-bottom: 1px solid #e5e5e5;
 }
-.dialog-title {
-  font-weight: bold;
-  margin-bottom: 8px;
+
+.dialog-header h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
 }
-.dialog-actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 10px;
-}
-.dialog-actions button {
-  font-size: 13px;
-  padding: 3px 14px;
-  border-radius: 3px;
-  border: 1px solid #1890ff;
-  background: #fff;
-  color: #1890ff;
-  cursor: pointer;
-  transition: background 0.18s, color 0.18s;
-}
-.dialog-actions button:disabled {
-  color: #aaa;
-  border-color: #ccc;
-  cursor: not-allowed;
-}
-.dialog-actions button:hover:not(:disabled) {
-  background: #e6f7ff;
-}
-.add-panel {
-  width: 340px;
-  max-height: 320px;
-  overflow-y: auto;
+
+.close-btn {
   background: none;
   border: none;
-  padding: 0;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px;
+  color: #666;
 }
-.component-category {
-  margin-bottom: 16px;
+
+.close-btn:hover {
+  color: #333;
 }
-.component-category h4 {
-  margin: 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid #eee;
+
+.component-panel {
+  display: flex;
+  height: 400px;
 }
-.component-list {
+
+.category-tabs {
+  width: 120px;
+  border-right: 1px solid #e5e5e5;
+  background-color: #f8f9fa;
+}
+
+.tab-btn {
+  display: block;
+  width: 100%;
+  padding: 12px 16px;
+  border: none;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+  font-size: 14px;
+  color: #666;
+  border-bottom: 1px solid #e5e5e5;
+}
+
+.tab-btn:hover {
+  background-color: #e9ecef;
+}
+
+.tab-btn.active {
+  background-color: white;
+  color: #007bff;
+  font-weight: 500;
+}
+
+.component-grid {
+  flex: 1;
+  padding: 16px;
+  overflow-y: auto;
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
+  align-content: flex-start;
 }
-.component-item {
-  display: flex;
-  align-items: center;
-  padding: 8px;
-  background-color: #f9f9f9;
-  border: 1px solid #eee;
-  border-radius: 4px;
+
+.component-card {
+  border: 1px solid #e5e5e5;
+  border-radius: 6px;
+  padding: 8px 12px;
   cursor: pointer;
-  user-select: none;
-  min-width: 90px;
-  margin-bottom: 4px;
-  transition: background 0.18s, border 0.18s;
+  transition: all 0.2s;
+  background: white;
+  min-width: 120px;
+  text-align: center;
 }
-.component-item.selected,
-.component-item:hover {
-  background-color: #e6f7ff;
-  border-color: #1890ff;
+
+.component-card:hover {
+  border-color: #007bff;
+  box-shadow: 0 2px 8px rgba(0, 123, 255, 0.15);
 }
-.component-icon {
-  margin-right: 4px;
+
+.component-card.selected {
+  border-color: #007bff;
+  background-color: #f0f8ff;
+}
+
+.component-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 16px 20px;
+  border-top: 1px solid #e5e5e5;
+  background-color: #f8f9fa;
+}
+
+.btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  background: white;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-default:hover:not(:disabled) {
+  background-color: #f8f9fa;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover:not(:disabled) {
+  background-color: #0056b3;
+  border-color: #0056b3;
 }
 </style>
