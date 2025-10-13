@@ -169,10 +169,8 @@ const filteredProperties = computed(() => {
 
 // 是否有子组件 - 只对容器类型组件显示添加按钮
 const hasChildren = computed(() => {
-  const containerTypes = [
-    'container', 'row', 'column', 'stack', 'card', 'tabs', 'collapse', 'modal', 'drawer'
-  ];
-  return containerTypes.includes(props.component.type || '');
+  const keys=  Object.keys(props.component)
+  return keys.includes("child") || keys.includes("children");
 });
 
 // 子组件数量

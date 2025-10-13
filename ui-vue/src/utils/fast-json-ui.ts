@@ -156,13 +156,18 @@ export const computeStyle = (config: any) => {
   };
 };
 
+// 渲染模式类型
+export type RenderMode = 'normal' | 'editor' | 'preview';
+
 // 全局存储
 const globalStore: {
   data: ConfigData;
   methods: ConfigMethods;
+  mode: RenderMode;
 } = {
   data: {},
-  methods: {}
+  methods: {},
+  mode: 'normal'
 };
 
 /**
@@ -215,4 +220,25 @@ export const getGlobalDataStore = (): ConfigData => {
  */
 export const getGlobalMethodStore = (): ConfigMethods => {
   return globalStore.methods;
-}; 
+};
+
+/**
+ * 设置渲染模式
+ * @param mode 渲染模式：normal | editor | preview
+ */
+export const setRenderMode = (mode: RenderMode): void => {
+  globalStore.mode = mode;
+};
+
+/**
+ * 获取当前渲染模式
+ */
+export const getRenderMode = (): RenderMode => {
+  return globalStore.mode;
+};
+
+/** 是否为编辑模式 */
+export const isEditorMode = (): boolean => globalStore.mode === 'editor';
+
+/** 是否为预览模式 */
+export const isPreviewMode = (): boolean => globalStore.mode === 'preview';

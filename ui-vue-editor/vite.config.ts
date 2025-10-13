@@ -22,13 +22,12 @@ export default defineConfig({
     },
     rollupOptions: {
       // Make sure to externalize deps that shouldn't be bundled
-      external: ["vue", "fast-json-ui-vue", "vuedraggable"],
+      external: ["vue", "fast-json-ui-vue"],
       output: {
         // Provide globals for UMD build
         globals: {
           vue: "Vue",
           "fast-json-ui-vue": "FastJsonUiVue",
-          vuedraggable: "Draggable",
         },
         exports: "named",
       },

@@ -137,3 +137,37 @@ src/
 - ✅ 组件面板和画布拖拽
 - ✅ 属性编辑和实时预览
 - ✅ 导入导出功能
+
+---
+
+## 数据流与架构说明
+
+本编辑器采用“编辑 JSON 为唯一真源”的数据流架构：
+
+- 编辑 JSON（state.rootComponent）作为唯一数据源，所有增删改操作直接作用于该对象。
+- 预览 JSON 通过纯函数实时转换（JsonTransformFactory.toPreview），该函数会为每个组件包裹 ComponentRenderer，并保持无副作用（不修改输入）。
+- 通过 computed 自动生成预览 JSON，使预览界面随编辑变更而实时更新。
+
+### 模块职责
+- JsonTransformFactory
+  - toPreview(config, { isEditor }): 纯函数转换编辑 JSON -> 预览 JSON。
+  - stripWrapper(config): 去除预览 JSON 的包装，生成可导出的干净编辑 JSON。
+  - 内部使用深拷贝，确保无副作用。
+- ComponentManager
+  - 统一管理包装策略与类型扩展：支持为不同组件类型注册自定义包装器。
+  - wrapComponent(child, options): 根据类型与策略生成包装结构（默认使用 ComponentRenderer）。
+  - stripWrapper(config): 移除包装结构，恢复原始组件配置。
+
+### 扩展机制
+- 通过 ComponentManager.registerTypeWrapper(type, builder) 可为指定类型组件注册包装策略；默认策略为 ComponentRenderer。
+- 事件表达式作为字符串保留（如 onTap, onUpdate 等），由运行时进行解析与绑定。
+
+### 错误与回退
+- JsonTransformFactory 在转换与剥离中使用 try/catch 捕获错误，发生异常时提供回退节点（如 text 提示）。
+
+### 测试
+- 使用 Vitest 为转换工厂编写单元测试，确保：
+  - 纯函数与无副作用（输入不被修改）。
+  - 包装结构正确并包含 path、isEditor 等字段。
+  - 剥离包装后结构与原始编辑 JSON 相同。
+  - 类型包装策略可覆盖默认行为。

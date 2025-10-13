@@ -58,6 +58,9 @@ export interface PropertyMeta {
   defaultValue?: any;
   options?: { label: string; value: any }[];
   required?: boolean;
+  // 新增：属性分组配置（用于编辑器折叠面板分组显示）
+  group?: string; // 分组键，如 "layout"、"style"、"size"、"event" 等
+  groupLabel?: string; // 分组显示名称，如 "布局"、"样式"
 }
 
 /**

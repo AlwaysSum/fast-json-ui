@@ -12,33 +12,19 @@
       </div>
     </div>
     
-    <div 
-      class="canvas-container"
-      :class="{ 'drag-over': isDragOver, 'empty': isEmpty }"
-      @dragover.prevent="onDragOver"
-      @dragleave="onDragLeave"
-      @drop="onDrop"
-    >
-      <div v-if="isEmpty" class="empty-state">
+    <div class="canvas-container">
+      <div v-if="isEmpty" class="empty-hint">
         <div class="empty-icon">📱</div>
-        <div class="empty-text">拖拽组件到此处开始设计</div>
-        <div class="empty-hint">或点击左侧组件面板中的组件</div>
+        <div class="empty-text">点击左侧组件面板中的组件开始设计</div>
+        <div class="empty-sub">选择合适的组件来构建您的界面</div>
       </div>
-      
-      <div v-else class="canvas-content">
+
+      <div class="canvas-content">
         <fast-json-widget
           :config="config"
           :data="data"
           :methods="methods"
         />
-      </div>
-      
-      <!-- 拖拽指示器 -->
-      <div v-if="isDragOver" class="drop-indicator">
-        <div class="drop-zone">
-          <div class="drop-icon">📦</div>
-          <div class="drop-text">释放以添加组件</div>
-        </div>
       </div>
     </div>
   </div>
@@ -70,7 +56,6 @@ const emit = defineEmits<{
 }>();
 
 // 响应式数据
-const isDragOver = ref(false);
 
 // 计算属性
 const isEmpty = computed(() => {
@@ -78,43 +63,7 @@ const isEmpty = computed(() => {
          (!props.config.children?.length && !props.config.child);
 });
 
-// 拖拽处理
-function onDragOver(event: DragEvent) {
-  event.preventDefault();
-  isDragOver.value = true;
-  
-  if (event.dataTransfer) {
-    event.dataTransfer.dropEffect = 'copy';
-  }
-}
 
-function onDragLeave(event: DragEvent) {
-  // 只有当离开整个容器时才取消拖拽状态
-  const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-  const x = event.clientX;
-  const y = event.clientY;
-  
-  if (x < rect.left || x > rect.right || y < rect.top || y > rect.bottom) {
-    isDragOver.value = false;
-  }
-}
-
-function onDrop(event: DragEvent) {
-  event.preventDefault();
-  isDragOver.value = false;
-  
-  if (event.dataTransfer) {
-    const data = event.dataTransfer.getData("application/json");
-    if (data) {
-      try {
-        const widget = JSON.parse(data) as WidgetMeta;
-        emit('addComponent', widget);
-      } catch (e) {
-        console.error("Failed to parse dropped component", e);
-      }
-    }
-  }
-}
 
 // 操作方法
 function clearCanvas() {
@@ -182,19 +131,10 @@ function previewMode() {
   overflow: auto;
 }
 
-.canvas-container.empty {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
 
-.canvas-container.drag-over {
-  border-color: #1890ff;
-  background: #f0f8ff;
-  transform: scale(1.02);
-}
 
-.empty-state {
+.empty-hint {
+  padding: 16px;
   text-align: center;
   color: #999;
   user-select: none;
@@ -212,7 +152,7 @@ function previewMode() {
   color: #666;
 }
 
-.empty-hint {
+.empty-sub {
   font-size: 14px;
   color: #999;
 }
@@ -222,50 +162,7 @@ function previewMode() {
   min-height: 100%;
 }
 
-.drop-indicator {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(24, 144, 255, 0.1);
-  backdrop-filter: blur(2px);
-  z-index: 1000;
-}
 
-.drop-zone {
-  padding: 32px;
-  border: 2px dashed #1890ff;
-  border-radius: 12px;
-  background: rgba(255, 255, 255, 0.9);
-  text-align: center;
-  animation: pulse 2s infinite;
-}
-
-.drop-icon {
-  font-size: 32px;
-  margin-bottom: 12px;
-}
-
-.drop-text {
-  font-size: 16px;
-  color: #1890ff;
-  font-weight: 500;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  50% {
-    transform: scale(1.05);
-    opacity: 0.8;
-  }
-}
 
 /* 滚动条样式 */
 .canvas-container::-webkit-scrollbar {

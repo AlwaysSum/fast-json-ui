@@ -38,9 +38,6 @@
             v-for="widget in category.widgets"
             :key="widget.type"
             class="component-item"
-            draggable="true"
-            @dragstart="onDragStart($event, widget)"
-            @dragend="onDragEnd($event)"
             @click="addComponent(widget)"
           >
             <span class="component-icon">{{ getComponentIcon(widget.type) }}</span>
@@ -68,7 +65,6 @@ const props = withDefaults(defineProps<Props>(), {
 
 // Emits
 const emit = defineEmits<{
-  dragComponent: [widget: WidgetMeta];
   addComponent: [widget: WidgetMeta];
 }>();
 
@@ -213,24 +209,7 @@ function toggleCategory(category: string) {
   }
 }
 
-// 拖拽开始
-function onDragStart(event: DragEvent, widget: WidgetMeta) {
-  if (event.dataTransfer) {
-    // 设置拖拽数据，包含完整的 widget 信息
-    event.dataTransfer.setData('application/json', JSON.stringify(widget));
-    event.dataTransfer.effectAllowed = 'copy';
-    
-    // 添加拖拽样式
-    (event.target as HTMLElement).classList.add('dragging');
-  }
-  emit('dragComponent', widget);
-}
 
-// 拖拽结束
-function onDragEnd(event: DragEvent) {
-  // 移除拖拽样式
-  (event.target as HTMLElement).classList.remove('dragging');
-}
 
 // 添加组件
 function addComponent(widget: WidgetMeta) {
@@ -370,7 +349,7 @@ function addComponent(widget: WidgetMeta) {
   padding: 12px 8px;
   border: 1px solid #e6e6e6;
   border-radius: 6px;
-  cursor: move;
+  cursor: pointer;
   background: #fff;
   transition: all 0.2s;
   min-height: 60px;
@@ -401,11 +380,7 @@ function addComponent(widget: WidgetMeta) {
   font-weight: 400;
 }
 
-/* 拖拽时的样式 */
-.component-item.dragging {
-  opacity: 0.5;
-  transform: scale(0.95);
-}
+
 
 /* 滚动条样式 */
 .component-categories::-webkit-scrollbar {

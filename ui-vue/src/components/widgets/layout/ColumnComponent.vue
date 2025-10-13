@@ -1,12 +1,19 @@
 <template>
   <div :style="columnStyle">
-    <fast-json-widget
-      v-for="(item, index) in config.children"
-      :key="index"
-      :config="item"
-      :data="data"
-      :methods="methods"
-    />
+    <template v-if="!isEditor || (config.children && config.children.length > 0)">
+      <fast-json-widget
+        v-for="(item, index) in config.children"
+        :key="index"
+        :config="item"
+        :data="data"
+        :methods="methods"
+      />
+    </template>
+    <div v-else class="placeholder column-skeleton">
+      <div class="skeleton-item"></div>
+      <div class="skeleton-item"></div>
+      <div class="skeleton-item"></div>
+    </div>
   </div>
 </template>
 
@@ -36,4 +43,28 @@ const columnStyle = computed(() => {
     ...FastJsonUI.computeStyle(props.config),
   };
 });
+
+const isEditor = computed(() => FastJsonUI.isEditorMode());
 </script>
+
+<style  scoped>
+.placeholder {
+  width: 100%;
+  border: 1px dashed #d9d9d9;
+  background: #fafafa;
+  border-radius: 8px;
+}
+.column-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+  min-height: 120px;
+}
+.skeleton-item {
+  height: 40px;
+  background: #eee;
+  border-radius: 6px;
+  border: 1px solid #e5e5e5;
+}
+</style>

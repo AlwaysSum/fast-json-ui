@@ -64,10 +64,15 @@ const longPressThreshold = 500; // 长按阈值，单位毫秒
  * @param eventType 事件类型
  */
 function handleEvent(event: Event | null, eventType: string) {
-  console.log(eventType);
+  // console.log(eventType);
   // 阻止右键菜单默认行为
   if (eventType === 'onContextMenu') {
     event?.preventDefault();
+  }
+
+  // 编辑模式下不触发交互事件（仅展示样式）
+  if (FastJsonUI.isEditorMode()) {
+    return;
   }
   
   // 检查配置中是否有对应的事件处理函数
@@ -160,4 +165,4 @@ onMounted(() => {
 .container {
   display: flex;
 }
-</style> 
+</style>

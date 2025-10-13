@@ -171,8 +171,6 @@ const emit = defineEmits<{
   moveDown: [path: string[]]
   increaseLevel: [path: string[]]
   decreaseLevel: [path: string[]]
-  dropComponent: [widget: any, targetPath: string, position?: string]
-  moveNode: [fromPath: string[], toPath: string[]]
 }>();
 
 // TDesign Tree 组件的 keys 配置

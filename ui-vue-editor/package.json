@@ -44,12 +44,10 @@
     "fast-json-ui-vue": "../ui-vue",
     "tdesign-icons-vue-next": "^0.4.1",
     "tdesign-vue-next": "^1.17.1",
-    "vue": "^3.2.47",
-    "vuedraggable": "^4.1.0"
+    "vue": "^3.2.47"
   },
   "devDependencies": {
     "@types/node": "^18.19.80",
-    "@types/vue": "^2.0.0",
     "@typescript-eslint/eslint-plugin": "^5.54.1",
     "@typescript-eslint/parser": "^5.54.1",
     "@vitejs/plugin-vue": "^4.1.0",
