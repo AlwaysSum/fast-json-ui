@@ -3,114 +3,63 @@
     <t-card v-if="!meta" title="属性编辑器" :bordered="false">
       <t-empty description="没有可编辑的属性" />
     </t-card>
-    <t-card v-else :title="`${meta.name} 属性`" :bordered="false">
-      <t-form
-        :data="formData"
-        :colon="true"
-        label-width="100px"
-        @submit="onSubmit"
-      >
-        <t-form-item
-          v-for="property in filteredProperties"
-          :key="property.name"
-          :label="property.label"
-          :name="property.name"
-          :required="property.required"
-        >
-          <!-- 字符串属性 -->
-          <t-input
-            v-if="property.type === 'string'"
-            v-model="formData[property.name]"
-            :placeholder="`请输入${property.label}`"
-            @change="(value) => handleStringInput(value, property.name)"
-          />
+    <t-form v-else :data="formData" :colon="true" label-width="88px" size="small" @submit="onSubmit">
+      <t-form-item v-for="property in filteredProperties" :key="property.name" :label="property.label"
+        :name="property.name" :required="property.required">
+        <!-- 字符串属性 -->
+        <t-input v-if="property.type === 'string'" v-model="formData[property.name]"
+          :placeholder="`请输入${property.label}`" size="small" @change="handleStringInput($event, property.name)" />
 
-          <!-- 数字属性 -->
-          <t-input-number
-            v-else-if="property.type === 'number'"
-            v-model="formData[property.name]"
-            :placeholder="`请输入${property.label}`"
-            @change="(value) => handleNumberInput(value, property.name)"
-          />
+        <!-- 数字属性 -->
+        <t-input-number v-else-if="property.type === 'number'" v-model="formData[property.name]"
+          :placeholder="`请输入${property.label}`" size="small" @change="handleNumberInput($event, property.name)" />
 
-          <!-- 布尔属性 -->
-          <t-switch
-            v-else-if="property.type === 'boolean'"
-            v-model="formData[property.name]"
-            @change="(value) => handleBooleanChange(value, property.name)"
-          />
+        <!-- 布尔属性 -->
+        <t-switch v-else-if="property.type === 'boolean'" v-model="formData[property.name]" size="small"
+          @change="handleBooleanChange($event, property.name)" />
 
-          <!-- 选择属性 -->
-          <t-select
-            v-else-if="property.type === 'select'"
-            v-model="formData[property.name]"
-            :placeholder="`请选择${property.label}`"
-            @change="(value) => handleSelectChange(value, property.name)"
-          >
-            <t-option
-              v-for="option in property.options"
-              :key="option.value"
-              :value="option.value"
-              :label="option.label"
-            />
-          </t-select>
+        <!-- 选择属性 -->
+        <t-select v-else-if="property.type === 'select'" v-model="formData[property.name]"
+          :placeholder="`请选择${property.label}`" size="small" @change="handleSelectChange($event, property.name)">
+          <t-option v-for="option in property.options" :key="option.value" :value="option.value"
+            :label="option.label" />
+        </t-select>
 
-          <!-- 颜色属性 -->
-          <t-color-picker
-            v-else-if="property.type === 'color'"
-            v-model="formData[property.name]"
-            @change="(value) => handleColorInput(value, property.name)"
-          />
+        <!-- 颜色属性 -->
+        <t-color-picker v-else-if="property.type === 'color'" v-model="formData[property.name]" size="small"
+          @change="handleColorInput($event, property.name)" />
 
-          <!-- 表达式属性 -->
-          <t-textarea
-            v-else-if="property.type === 'expression'"
-            v-model="formData[property.name]"
-            :placeholder="`请输入${property.label}`"
-            :autosize="{ minRows: 3, maxRows: 6 }"
-            @change="(value) => handleTextareaInput(value, property.name)"
-          />
+        <!-- 表达式属性 -->
+        <t-textarea v-else-if="property.type === 'expression'" v-model="formData[property.name]"
+          :placeholder="`请输入${property.label}`" :autosize="{ minRows: 3, maxRows: 6 }" size="small"
+          @change="handleTextareaInput($event, property.name)" />
 
-          <!-- 方法属性 -->
-          <t-textarea
-            v-else-if="property.type === 'method'"
-            v-model="formData[property.name]"
-            placeholder="输入方法名称"
-            :autosize="{ minRows: 3, maxRows: 6 }"
-            @change="(value) => handleTextareaInput(value, property.name)"
-          />
+        <!-- 方法属性 -->
+        <t-textarea v-else-if="property.type === 'method'" v-model="formData[property.name]" placeholder="输入方法名称"
+          :autosize="{ minRows: 3, maxRows: 6 }" size="small" @change="handleTextareaInput($event, property.name)" />
 
-          <!-- 默认输入 -->
-          <t-input
-            v-else
-            v-model="formData[property.name]"
-            :placeholder="`请输入${property.label}`"
-            @change="(value) => handleStringInput(value, property.name)"
-          />
-        </t-form-item>
+        <!-- 默认输入 -->
+        <t-input v-else v-model="formData[property.name]" :placeholder="`请输入${property.label}`" size="small"
+          @change="handleStringInput($event, property.name)" />
+      </t-form-item>
 
-        <!-- 特殊属性：子组件 -->
-        <t-form-item v-if="hasChildren" label="子组件">
-          <div class="children-info">
-            <t-space align="center">
-              <t-tag theme="primary" variant="light">
-                {{ childrenCount }} 个子组件
-              </t-tag>
-              <t-button
-                theme="primary"
-                size="small"
-                @click="handleAddComponentClick"
-              >
-                <template #icon>
-                  <AddIcon />
-                </template>
-                添加子组件
-              </t-button>
-            </t-space>
-          </div>
-        </t-form-item>
-      </t-form>
-    </t-card>
+      <!-- 特殊属性：子组件 -->
+      <t-form-item v-if="hasChildren" label="子组件">
+        <div class="children-info">
+          <t-space align="center">
+            <t-tag theme="primary" variant="light">
+              {{ childrenCount }} 个子组件
+            </t-tag>
+            <t-button theme="primary" size="small" @click="handleAddComponentClick">
+              <template #icon>
+                <AddIcon />
+              </template>
+              添加子组件
+            </t-button>
+          </t-space>
+        </div>
+      </t-form-item>
+    </t-form>
   </div>
 </template>
 
@@ -169,7 +118,7 @@ const filteredProperties = computed(() => {
 
 // 是否有子组件 - 只对容器类型组件显示添加按钮
 const hasChildren = computed(() => {
-  const keys=  Object.keys(props.component)
+  const keys = Object.keys(props.component)
   return keys.includes("child") || keys.includes("children");
 });
 
@@ -227,7 +176,7 @@ function onSubmit() {
 
 <style scoped>
 .property-editor {
-  padding: 16px;
+  padding: 12px;
   background: var(--td-bg-color-container);
 }
 
@@ -252,7 +201,7 @@ function onSubmit() {
 }
 
 :deep(.t-form-item) {
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 :deep(.t-form__label) {
@@ -281,7 +230,7 @@ function onSubmit() {
   .property-editor {
     padding: 12px;
   }
-  
+
   :deep(.t-form) {
     --td-form-label-width: 60px;
   }

@@ -10,8 +10,8 @@ export const metadata: WidgetMeta = {
     value: ''
   },
   properties: [
-    { name: 'value', label: '测试值', type: 'string', defaultValue: '' }
+    { name: 'value', label: '测试值', type: 'string', defaultValue: '', group: 'debug', groupLabel: '调试' }
   ]
 };
 
-export default metadata; 
+export default metadata;
