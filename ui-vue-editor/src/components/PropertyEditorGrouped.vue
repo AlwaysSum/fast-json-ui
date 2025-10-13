@@ -21,6 +21,10 @@
       <t-empty description="没有可编辑的属性" />
     </t-card>
     <t-form v-else :data="formData" :colon="true" label-width="70px" size="small" @submit="onSubmit">
+      <!-- 通用属性：名称 -->
+      <t-form-item label="名称" name="name">
+        <t-input v-model="formData.name" placeholder="请输入名称" @change="handleStringInput($event, 'name')" />
+      </t-form-item>
       <t-collapse expand-on-click-node>
         <t-collapse-panel v-for="group in groupedProperties" :key="group.key" :header="group.label">
           <t-form-item v-for="property in group.items" :key="property.name" :label="property.label"
@@ -104,7 +108,10 @@ const formData = reactive<Record<string, any>>({});
 watch(
   () => props.component,
   (newComponent) => {
-    if (newComponent && props.meta?.properties) {
+    if (!newComponent) return;
+    // 通用属性：name
+    (formData as any).name = (newComponent as any).name || '';
+    if (props.meta?.properties) {
       props.meta.properties.forEach((property) => {
         formData[property.name] = (newComponent as any)[property.name];
       });

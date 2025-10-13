@@ -69,6 +69,7 @@ export interface PropertyMeta {
  */
 export interface ComponentConfig {
   type: string;
+  name?: string;
   [key: string]: any;
 }
 

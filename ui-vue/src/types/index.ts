@@ -7,6 +7,7 @@
  */
 export interface BaseConfig {
   type: string;
+  name?: string;
   [key: string]: any;
 }
 
@@ -103,4 +104,4 @@ export type ConfigData = Record<string, any>;
 /**
  * Type for the methods object containing functions
  */
-export type ConfigMethods = Record<string, Function>; 
+export type ConfigMethods = Record<string, Function>;

@@ -4,6 +4,10 @@
       <t-empty description="没有可编辑的属性" />
     </t-card>
     <t-form v-else :data="formData" :colon="true" label-width="88px" size="small" @submit="onSubmit">
+      <!-- 通用属性：名称 -->
+      <t-form-item label="名称" name="name">
+        <t-input v-model="formData.name" placeholder="请输入名称" size="small" @change="handleStringInput($event, 'name')" />
+      </t-form-item>
       <t-form-item v-for="property in filteredProperties" :key="property.name" :label="property.label"
         :name="property.name" :required="property.required">
         <!-- 字符串属性 -->
@@ -98,9 +102,12 @@ const formData = reactive<Record<string, any>>({});
 watch(
   () => props.component,
   (newComponent) => {
-    if (newComponent && props.meta?.properties) {
+    if (!newComponent) return;
+    // 通用属性：name
+    (formData as any).name = (newComponent as any).name || '';
+    if (props.meta?.properties) {
       props.meta.properties.forEach((property) => {
-        formData[property.name] = newComponent[property.name];
+        formData[property.name] = (newComponent as any)[property.name];
       });
     }
   },

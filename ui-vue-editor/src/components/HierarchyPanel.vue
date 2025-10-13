@@ -285,19 +285,10 @@ function getNodeIconComponent(type?: string) {
 // 获取节点标签
 function getNodeLabel(data: any): string {
   if (!data) return 'Unknown';
-  
-  // 显示组件类型和一些关键属性
-  let label = data.type || 'Unknown';
-  
-  if (data.text) {
-    label += ` (${data.text.substring(0, 20)}${data.text.length > 20 ? '...' : ''})`;
-  } else if (data.title) {
-    label += ` (${data.title})`;
-  } else if (data.label) {
-    label += ` (${data.label})`;
-  }
-  
-  return label;
+  // 优先显示自定义名称，其次显示组件类型
+  const n = (data as any).name;
+  if (n && String(n).trim().length > 0) return String(n);
+  return data.type || 'Unknown';
 }
 
 // 判断是否为容器类型组件

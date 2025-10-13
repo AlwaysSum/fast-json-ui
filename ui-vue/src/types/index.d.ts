@@ -2,11 +2,13 @@ import { App, Component } from 'vue';
 
 export interface ComponentConfig {
   type: string;
+  name?: string;
   [key: string]: any;
 }
 
 export interface BaseConfig {
   type: string;
+  name?: string;
   [key: string]: any;
 }
 
@@ -43,4 +45,4 @@ declare const plugin: {
   install: (app: App) => void;
 };
 
-export default plugin; 
+export default plugin;
