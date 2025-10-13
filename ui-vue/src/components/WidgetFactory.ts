@@ -29,7 +29,8 @@ export type ComponentCategory =
   | "layout"
   | "form"
   | "custom"
-  | "other";
+  | "other"
+  | "advanced";
 
 /**
  * 属性类型

@@ -38,8 +38,6 @@ const columnStyle = computed(() => {
     gap: getValueFromConfig(props.config.gap),
     alignItems: getValueFromConfig(props.config.align),
     justifyContent: getValueFromConfig(props.config.justify),
-    borderRadius: getValueFromConfig(props.config.borderRadius),
-    boxShadow: getValueFromConfig(props.config.boxShadow),
     ...FastJsonUI.computeStyle(props.config),
   };
 });

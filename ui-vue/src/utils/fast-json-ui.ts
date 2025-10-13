@@ -150,9 +150,11 @@ export const computeStyle = (config: any) => {
   return {
     width: config.width || 'auto',
     height: config.height || 'auto',
-    backgroundColor: config.color,
+    backgroundColor: config.backgroundColor,
     padding: config.padding,
     margin: config.margin,
+    borderRadius: config.borderRadius,
+    boxShadow: config.boxShadow,
   };
 };
 
