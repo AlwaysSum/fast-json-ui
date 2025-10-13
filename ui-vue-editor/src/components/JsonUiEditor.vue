@@ -800,6 +800,22 @@ function onTreeMoveDown(path: string[]) {
 onMounted(() => {
   state.rootComponent = JSON.parse(JSON.stringify(props.initialConfig));
 });
+
+// 当父组件传入的 initialConfig 引用发生变化时，同步更新编辑器内部状态
+// 说明：这里不做深度监听，仅在引用变更时重置，以避免编辑过程中触发不必要的回写循环
+// watch(
+//   () => props.initialConfig,
+//   (val, oldVal) => {
+//     if (!val) return;
+//     // 仅在引用变化时才同步，避免编辑过程中的每次属性更新触发刷新
+//     if (val === oldVal) return;
+//     state.rootComponent = JSON.parse(JSON.stringify(val));
+//     // 保守处理：切换页面时清空选中状态，但不清空撤销/重做栈，避免误伤输入体验
+//     state.selectedComponent = null;
+//     state.componentPath = [];
+//   },
+//   { deep: false,immediate: false }
+// );
 </script>
 
 <style scoped>
