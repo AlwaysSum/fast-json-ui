@@ -40,7 +40,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, computed } from "vue";
+import { ref } from "vue";
 import VueJsonPretty from 'vue-json-pretty';
 import 'vue-json-pretty/lib/styles.css';
 import { JsonUiEditor } from "fast-json-ui-editor";
@@ -91,9 +91,7 @@ const dialogVisible = ref(false);
 const dialogType = ref<"json" | "preview">("json");
 const dialogJson = ref<any>(null);
 
-const formattedDialogJson = computed(() => {
-  return JSON.stringify(dialogJson.value, null, 2);
-});
+// 移除未使用的计算属性，避免 TS6133 提示
 
 function closeDialog() {
   dialogVisible.value = false;

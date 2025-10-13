@@ -1,33 +1,39 @@
 <template>
-  <div class="example-container">
-    <h2>Advanced Example</h2>
-    
-    <div class="json-editor">
-      <h3>JSON Configuration</h3>
-      <textarea v-model="jsonConfig" rows="15"></textarea>
-      <button @click="updateConfig">Update UI</button>
+  <div class="example-container two-column">
+    <div class="left-panel">
+      <h2>Advanced Example</h2>
+
+      <div class="json-editor section">
+        <h3>JSON Configuration</h3>
+        <textarea v-model="jsonConfig" rows="18"></textarea>
+        <button @click="updateConfig">Update UI</button>
+      </div>
+
+      <div class="data-editor section">
+        <h3>Data</h3>
+        <textarea v-model="jsonData" rows="12"></textarea>
+        <button @click="updateData">Update Data</button>
+      </div>
     </div>
-    
-    <div class="ui-preview">
+
+    <div class="right-panel">
       <h3>UI Preview</h3>
-      <FastJsonWidget 
-        :config="config" 
-        :data="configData" 
-        :methods="configMethods">
-        <template #default="{ child }">
-          <CustomComponent 
-            :config="child" 
-            :data="configData" 
-            :methods="configMethods">
-          </CustomComponent>
-        </template>
-      </FastJsonWidget>
-    </div>
-    
-    <div class="data-editor">
-      <h3>Data</h3>
-      <textarea v-model="jsonData" rows="8"></textarea>
-      <button @click="updateData">Update Data</button>
+      <div class="ui-preview">
+        <FastJsonWidget
+          :config="config"
+          :data="configData"
+          :methods="configMethods"
+        >
+          <template #default="{ child }">
+            <CustomComponent
+              :config="child"
+              :data="configData"
+              :methods="configMethods"
+            >
+            </CustomComponent>
+          </template>
+        </FastJsonWidget>
+      </div>
     </div>
   </div>
 </template>
@@ -35,7 +41,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { FastJsonWidget } from 'fast-json-ui-vue';
-import CustomComponent from '../components/custom/CustomComponent.vue';
+// 使用 TS 包装文件以避免 IDE 对 .vue 默认导出诊断报错
+import CustomComponent from '../components/custom/CustomComponent';
 
 // Data for binding
 const configData = ref({
@@ -186,9 +193,25 @@ onMounted(() => {
 <style scoped>
 .example-container {
   font-family: Arial, sans-serif;
-  max-width: 1200px;
   margin: 0 auto;
   padding: 20px;
+}
+
+.two-column {
+  display: flex;
+  gap: 20px;
+  align-items: stretch;
+}
+
+.left-panel {
+  width: 42%;
+  min-width: 420px;
+}
+
+.right-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 }
 
 h2 {
@@ -202,11 +225,12 @@ h3 {
   padding-bottom: 8px;
 }
 
-.json-editor, .data-editor, .ui-preview {
-  margin-bottom: 30px;
+.section {
+  margin-bottom: 20px;
   padding: 15px;
   border: 1px solid #ddd;
   border-radius: 4px;
+  background-color: #fff;
 }
 
 textarea {
@@ -232,7 +256,11 @@ button:hover {
 }
 
 .ui-preview {
+  flex: 1;
   min-height: 400px;
   background-color: #fff;
+  padding: 15px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
 }
-</style> 
+</style>
