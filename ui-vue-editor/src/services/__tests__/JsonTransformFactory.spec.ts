@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { toPreview, stripWrapper } from '../JsonTransformFactory';
-import ComponentManager, { registerTypeWrapper } from '../ComponentManager';
+import { registerTypeWrapper } from '../ComponentManager';
 import type { ComponentConfig } from '../../types';
 
 describe('JsonTransformFactory', () => {

@@ -3,7 +3,11 @@ import "./style.css";
 import App from "./App.vue";
 import FastJsonUI, { registerComponent } from "fast-json-ui-vue";
 import * as EditorModule from "fast-json-ui-editor";
+// 引入编辑器和依赖的样式（TDesign + fast-json-ui-vue）
+import "tdesign-vue-next/es/style/index.css";
+import "fast-json-ui-vue/dist/style.css";
 import "fast-json-ui-editor/dist/style.css";
+import TDesign from "tdesign-vue-next";
 
 //注册自定义 Vue
 import CustomComponent from "./components/custom/CustomComponent.vue";
@@ -41,5 +45,8 @@ app.use(FastJsonUI);
 
 // Register the Fast-JSON-UI Editor
 app.use(EditorModule.FastJsonUiEditor);
+
+// 注册 TDesign 组件库（编辑器内部使用）
+app.use(TDesign);
 
 app.mount("#app");

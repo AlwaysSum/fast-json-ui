@@ -1,5 +1,5 @@
 import type { ComponentConfig } from '../types';
-import ComponentManager, { wrapComponent as wrapByManager, stripWrapper as stripByManager } from './ComponentManager';
+import { wrapComponent as wrapByManager, stripWrapper as stripByManager } from './ComponentManager';
 
 export type PreviewTransformOptions = {
   isEditor: boolean;
