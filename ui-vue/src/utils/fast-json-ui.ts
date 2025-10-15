@@ -1,6 +1,6 @@
 import { ConfigData, ConfigMethods } from '../types';
 import * as RegexUtils from './regex-utils';
-import { registerCustomComponent,registerCustomComponents } from '../components/WidgetFactory';
+import { registerCustomComponent, registerCustomComponents } from '../components/WidgetFactory';
 
 /**
  * 注册组件
@@ -23,16 +23,16 @@ export const getNestedValue = (obj: any, path: string): any => {
   if (!obj || !path) {
     return undefined;
   }
-  
+
   // 处理路径中的点号和数组索引
   const keys = path.split('.');
   let result = obj;
-  
+
   for (const key of keys) {
     if (result === null || result === undefined) {
       return undefined;
     }
-    
+
     // 尝试将键转换为数字（用于数组索引）
     const index = Number(key);
     if (!isNaN(index) && Array.isArray(result)) {
@@ -41,7 +41,7 @@ export const getNestedValue = (obj: any, path: string): any => {
       result = result[key];
     }
   }
-  
+
   return result;
 };
 
@@ -61,12 +61,14 @@ export const getValueFromConfig = (value: any, data: ConfigData, methods: Config
   if (value.startsWith('@{') && value.endsWith('}')) {
     const findMethod = RegexUtils.getMethodNameByString(value);
     const method = methods[findMethod.method];
-    
+
     if (method) {
       const argsList = findMethod.args.map(arg => {
         if (arg.startsWith('${') && arg.endsWith('}')) {
           const subName = RegexUtils.getVariableNameByString(arg);
           return getNestedValue(data, subName);
+        } else if (typeof arg === 'string' && arg.startsWith('\'') && arg.endsWith('\'')) {
+          return arg.slice(1, -1)
         }
         return arg;
       });
@@ -75,16 +77,16 @@ export const getValueFromConfig = (value: any, data: ConfigData, methods: Config
         return method(...argsList);
       }
     }
-    
-    return () => {};
-  } 
-  
+
+    return () => { };
+  }
+
   // 处理变量引用格式 ${variableName}
   else if (value.startsWith('${') && value.endsWith('}')) {
     const varName = RegexUtils.getVariableNameByString(value);
     return getNestedValue(data, varName);
-  } 
-  
+  }
+
   // 处理包含嵌入变量的文本
   else {
     return RegexUtils.replaceStringVariable(value, data);
@@ -106,12 +108,14 @@ export const getMethodFromConfig = (eventValue: any, data: ConfigData, methods: 
   if (eventValue.startsWith('@{') && eventValue.endsWith('}')) {
     const findMethod = RegexUtils.getMethodNameByString(eventValue);
     const method = methods[findMethod.method];
-    
+
     if (method) {
       const argsList = findMethod.args.map(arg => {
         if (arg.startsWith('${') && arg.endsWith('}')) {
           const subName = RegexUtils.getVariableNameByString(arg);
           return getNestedValue(data, subName);
+        }else if (typeof arg === 'string' && arg.startsWith('\'') && arg.endsWith('\'')) {
+          return arg.slice(1, -1)
         }
         return arg;
       });
@@ -121,7 +125,7 @@ export const getMethodFromConfig = (eventValue: any, data: ConfigData, methods: 
       }
     }
   }
-  
+
   // 默认回退函数
   return () => {
     console.warn('Method not found:', eventValue);
