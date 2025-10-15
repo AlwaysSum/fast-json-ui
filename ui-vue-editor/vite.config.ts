@@ -1,37 +1,22 @@
-import { defineConfig } from "vite";
-import vue from "@vitejs/plugin-vue";
-import * as path from "path";
+import { defineConfig } from 'vite';
+import vue from '@vitejs/plugin-vue';
 
-// https://vitejs.dev/config/
 export default defineConfig({
   plugins: [vue()],
-  resolve: {
-    alias: {
-      "@": path.resolve(__dirname, "src"),
-      vue: "vue/dist/vue.esm-bundler.js",
+  server: {
+    host: true,
+    port: 5175,
+  },
+  optimizeDeps: {
+    exclude: ['tdesign-icons-vue-next'],
+    esbuildOptions: {
+      sourcemap: false,
     },
   },
+  css: {
+    devSourcemap: false,
+  },
   build: {
-    sourcemap: true,
-    cssCodeSplit: false,
-    lib: {
-      entry: path.resolve(__dirname, "src/index.ts"),
-      name: "FastJsonUiEditor",
-      fileName: (format) =>
-        `fast-json-ui-editor.${format === "es" ? "mjs" : "umd.js"}`,
-    },
-    rollupOptions: {
-      // Make sure to externalize deps that shouldn't be bundled
-      external: ["vue", "fast-json-ui-vue"],
-      output: {
-        // Provide globals for UMD build
-        globals: {
-          vue: "Vue",
-          "fast-json-ui-vue": "FastJsonUiVue",
-        },
-        exports: "named",
-      },
-    },
-    emptyOutDir: true,
+    sourcemap: false,
   },
 });

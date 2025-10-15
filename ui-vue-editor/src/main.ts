@@ -1,5 +1,6 @@
 import { createApp } from 'vue';
 import App from './App.vue';
+import router from './router';
 import FastJsonUi  from 'fast-json-ui-vue';
 import * as FastJsonUiVue from 'fast-json-ui-vue';
 import TDesign from 'tdesign-vue-next';
@@ -15,6 +16,9 @@ app.use(TDesign);
 
 // 注册 Fast-JSON-UI 组件
 app.use(FastJsonUi);
+
+// 启用路由
+app.use(router);
 
 // 将渲染模式设置为编辑模式
 const setRenderModeSafe = (mode: 'normal' | 'editor' | 'preview') => {

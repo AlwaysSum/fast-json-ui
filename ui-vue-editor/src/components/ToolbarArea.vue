@@ -192,6 +192,8 @@ function importConfig() {
   fileInput.value?.click();
 }
 
+// 顶部“源码”按钮已移动到 AppEditorLayout 顶栏，不在此处显示
+
 function handleFileImport(event: Event) {
   const target = event.target as HTMLInputElement;
   const file = target.files?.[0];
@@ -224,6 +226,8 @@ function changeDevice() {
   border-bottom: 1px solid var(--td-border-level-1-color);
   min-height: 48px;
 }
+
+/* 预留按钮样式移除 */
 
 .toolbar-section {
   display: flex;

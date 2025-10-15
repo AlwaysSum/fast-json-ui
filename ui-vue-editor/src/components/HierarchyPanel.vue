@@ -1,6 +1,10 @@
 <template>
   <div class="hierarchy-panel">
     <t-card title="组件层级" :bordered="false">
+      <div class="current-object">
+        <span class="current-label">当前：</span>
+        <button class="current-name" @click="focusObjectProps">{{ activeObjectDisplay }}</button>
+      </div>
       <div class="tree-container" v-if="treeData.length > 0">
         <t-tree
           :data="treeData"
@@ -160,6 +164,10 @@ const props = defineProps({
     type: Array as PropType<string[]>,
     default: () => [],
   },
+  activeObjectName: {
+    type: String,
+    default: ''
+  },
 });
 
 // Emits
@@ -171,6 +179,7 @@ const emit = defineEmits<{
   moveDown: [path: string[]]
   increaseLevel: [path: string[]]
   decreaseLevel: [path: string[]]
+  focusObjectProps: []
 }>();
 
 // TDesign Tree 组件的 keys 配置
@@ -185,6 +194,16 @@ const treeRef = ref<TreeInstanceFunctions>();
 
 // 当前激活的节点
 const activeValue = ref<string>('');
+
+// 顶部当前对象名称显示
+const activeObjectDisplay = computed(() => {
+  const s = String((props as any).activeObjectName || '').trim();
+  return s.length ? s : '未命名';
+});
+
+function focusObjectProps() {
+  emit('focusObjectProps');
+}
 
 // 监听选中路径变化
 watch(() => props.selectedPath, (newPath) => {
@@ -436,6 +455,31 @@ function findComponentByPath(root: ComponentConfig | undefined, path: string[]):
   height: 100%;
   border-right: 1px solid var(--td-border-level-1-color);
   background: var(--td-bg-color-container);
+}
+
+.current-object {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--td-border-level-1-color);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.current-label {
+  color: var(--td-text-color-secondary);
+}
+
+.current-name {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--td-brand-color);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.current-name:hover {
+  text-decoration: underline;
 }
 
 .tree-container {

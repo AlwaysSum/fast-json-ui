@@ -4,7 +4,7 @@
     <ToolbarArea :mode="state.previewMode ? 'preview' : 'edit'" :canUndo="state.undoStack.length > 0"
       :canRedo="state.redoStack.length > 0" @modeChange="onModeChange" @undo="undo" @redo="redo" @clearAll="clearCanvas"
       @copyConfig="copyConfig" @pasteConfig="pasteConfig" @deviceChange="onDeviceChange" @exportConfig="exportJson"
-      @importConfig="importJson" />
+      @importConfig="importJson" @showSource="openSourceDialog" />
 
     <div class="editor-layout">
       <!-- 组件面板 - 暂时隐藏 -->
@@ -13,10 +13,16 @@
         @addComponent="onAddComponent"
       /> -->
 
-      <!-- 层级面板 -->
-      <HierarchyPanel :root="state.rootComponent" :selectedPath="selectedTreePath" @select="onTreeSelect"
-        @add="onTreeAdd" @remove="onTreeRemove" @moveUp="onTreeMoveUp" @moveDown="onTreeMoveDown"
-        style="border-right: 1px solid #eee" />
+      <!-- 左侧面板：当 showHierarchyPanel 为 true 显示层级树，否则插槽自定义面板 -->
+      <template v-if="showHierarchyPanel">
+        <HierarchyPanel :root="state.rootComponent" :selectedPath="selectedTreePath"
+          :activeObjectName="props.activeObjectName || String(props.activeObjectId)" @select="onTreeSelect"
+          @add="onTreeAdd" @remove="onTreeRemove" @moveUp="onTreeMoveUp" @moveDown="onTreeMoveDown"
+          @focusObjectProps="onFocusObjectProps" style="border-right: 1px solid #eee" />
+      </template>
+      <template v-else>
+        <slot name="left-panel" />
+      </template>
       <!-- 画布和属性面板 -->
       <div class="center-panel">
         <!-- 预览区域上方的工具栏 -->
@@ -39,6 +45,9 @@
             @click="activePropertyTab = 'properties'">
             组件属性
           </div>
+          <div class="tab" :class="{ active: activePropertyTab === 'object' }" @click="activePropertyTab = 'object'">
+            {{ objectTabLabel }}
+          </div>
           <div class="tab" :class="{ active: activePropertyTab === 'globals' }" @click="activePropertyTab = 'globals'">
             全局配置
           </div>
@@ -55,6 +64,21 @@
             <div v-else class="no-selection">请选择一个组件来编辑其属性</div>
           </div>
 
+          <!-- 对象属性面板（页面/弹窗/自定义组件） -->
+          <div v-if="activePropertyTab === 'object'" class="object-tab">
+            <t-form layout="vertical">
+              <t-form-item label="名称">
+                <t-input v-model="objectName" placeholder="请输入名称" />
+              </t-form-item>
+              <t-form-item :label="objectTabLabel + '变量'" labelAlign="top">
+                <KeyValueEditor v-model="objectVars" />
+              </t-form-item>
+              <t-form-item>
+                <t-button theme="primary" @click="saveObjectProps">保存</t-button>
+              </t-form-item>
+            </t-form>
+          </div>
+
           <!-- 全局配置面板 -->
           <div v-if="activePropertyTab === 'globals'" class="globals-tab">
             <h4>全局变量</h4>
@@ -66,6 +90,17 @@
         </div>
       </div>
     </div>
+
+    <!-- 源码查看对话框（并入根模板，避免多根模板报错） -->
+    <t-dialog v-if="showSourceDialog" :visible="showSourceDialog" header="源码" width="800px" @close="closeSourceDialog">
+      <JsonPreview :data="stripWrapper(state.rootComponent)" />
+      <template #footer>
+        <t-space>
+          <t-button theme="default" @click="closeSourceDialog">关闭</t-button>
+          <t-button theme="primary" @click="copyConfig">复制 JSON</t-button>
+        </t-space>
+      </template>
+    </t-dialog>
 
     <!-- 组件选择对话框 -->
     <AddComponentDialog :show="showAddComponentDialog" @close="onComponentDialogCancel" @add="onComponentSelected" />
@@ -79,17 +114,21 @@ import {
   computed,
   watch,
   onMounted,
+  onBeforeUnmount,
   defineComponent,
   h,
   defineAsyncComponent,
+  PropType,
 } from "vue";
 // 以异步组件形式导入，避免类型检查对默认导出报错
 const ComponentRenderer = defineAsyncComponent(() => import("./ComponentRenderer.vue"));
 // 使用分组版属性编辑器
 const PropertyEditor = defineAsyncComponent(() => import("./PropertyEditorGrouped.vue"));
-const CanvasArea = defineAsyncComponent(() => import("./CanvasArea.vue"));
-const ToolbarArea = defineAsyncComponent(() => import("./ToolbarArea.vue"));
-const AddComponentDialog = defineAsyncComponent(() => import("./AddComponentDialog.vue"));
+ const CanvasArea = defineAsyncComponent(() => import("./CanvasArea.vue"));
+ const ToolbarArea = defineAsyncComponent(() => import("./ToolbarArea.vue"));
+ const AddComponentDialog = defineAsyncComponent(() => import("./AddComponentDialog.vue"));
+ const JsonPreview = defineAsyncComponent(() => import("./JsonPreview.vue"));
+const KeyValueEditor = defineAsyncComponent(() => import("./KeyValueEditor.vue"));
 import { ComponentConfig } from "../types";
 // 通过命名空间导入以规避类型提示中的导出不匹配问题
 import * as FastJsonUiVue from "fast-json-ui-vue";
@@ -102,8 +141,8 @@ const setRenderModeSafe = (mode: 'normal' | 'editor' | 'preview') => {
     console.warn('fast-json-ui-vue: setRenderMode 不可用，已跳过设置渲染模式');
   }
 };
- import JsonTransformFactory, { toPreview, stripWrapper } from "../services/JsonTransformFactory";
- import { registerComponent } from "fast-json-ui-vue";
+import JsonTransformFactory, { toPreview, stripWrapper } from "../services/JsonTransformFactory";
+import { registerComponent } from "fast-json-ui-vue";
 const HierarchyPanel = defineAsyncComponent(() => import("./HierarchyPanel.vue"));
 import type { WidgetMeta } from 'fast-json-ui-vue/src/components/WidgetFactory';
 
@@ -164,16 +203,38 @@ function onMoveComponent(..._args: any[]) {
 // Props
 const props = defineProps({
   initialConfig: {
-    type: Object as () => ComponentConfig,
+    type: Object as PropType<ComponentConfig>,
     default: () => ({
       type: "container",
       children: [],
     }),
   },
+  showHierarchyPanel: {
+    type: Boolean,
+    default: true,
+  },
+  activeObjectKind: {
+    type: String as PropType<'page' | 'dialog' | 'custom'>,
+    default: 'page'
+  },
+  activeObjectId: {
+    type: [String, Number] as PropType<string | number>,
+    default: 'home'
+  },
+  activeObjectName: {
+    type: String,
+    default: ''
+  },
+  activeObjectVars: {
+    type: Object as PropType<Record<string, any>>,
+    default: () => ({})
+  }
 });
 
+const showHierarchyPanel = computed(() => !!props.showHierarchyPanel);
+
 // Emits
-const emit = defineEmits(["update:config", "export"]);
+const emit = defineEmits(["update:config", "export", "update:objectProps"]);
 
 // 状态
 const state = reactive({
@@ -188,6 +249,35 @@ const state = reactive({
 // 预览JSON：由编辑JSON实时转换生成
 const renderConfig = computed(() => {
   return toPreview(state.rootComponent, { isEditor: !state.previewMode });
+});
+
+// 源码查看对话框
+const showSourceDialog = ref(false);
+function openSourceDialog(){ showSourceDialog.value = true; }
+function closeSourceDialog(){ showSourceDialog.value = false; }
+
+// 监听来自顶层布局的全局动作事件
+function handleOpenSourceAction(){ openSourceDialog(); }
+function handleExportAction(){
+  // 触发原有导出事件（供页面自定义处理）
+  exportJson();
+  // 同时打开源码预览，提供复制能力，提升一致性体验
+  openSourceDialog();
+}
+function handleImportAction(){ importJson(); }
+onMounted(() => {
+  try {
+    window.addEventListener('fju-action-source', handleOpenSourceAction as EventListener);
+    window.addEventListener('fju-action-export', handleExportAction as EventListener);
+    window.addEventListener('fju-action-import', handleImportAction as EventListener);
+  } catch {}
+});
+onBeforeUnmount(() => {
+  try {
+    window.removeEventListener('fju-action-source', handleOpenSourceAction as EventListener);
+    window.removeEventListener('fju-action-export', handleExportAction as EventListener);
+    window.removeEventListener('fju-action-import', handleImportAction as EventListener);
+  } catch {}
 });
 
 // 递归处理组件配置
@@ -209,6 +299,13 @@ const renderMethods = ref({
 const activePropertyTab = ref("properties");
 const globalVariables = ref<Record<string, any>>({});
 const globalFunctions = ref<Record<string, any>>({});
+const objectTabLabel = computed(() => {
+  if (props.activeObjectKind === 'dialog') return '弹窗属性';
+  if (props.activeObjectKind === 'custom') return '组件属性';
+  return '页面属性';
+});
+const objectName = ref<string>('');
+const objectVars = ref<Record<string, any>>({});
 
 // 新增：当前树选中路径
 const selectedTreePath = ref<string[]>([]);
@@ -435,6 +532,19 @@ function moveComponent(fromPath: string[], toPath: string[]) {
     updateConfig();
   }
 }
+
+// ===== 对象属性（页面/弹窗/组件）逻辑 =====
+watch(() => props.activeObjectName, (n) => { objectName.value = n || ''; }, { immediate: true });
+watch(() => props.activeObjectVars, (v) => {
+  objectVars.value = (v && typeof v === 'object') ? JSON.parse(JSON.stringify(v)) : {};
+}, { immediate: true, deep: true });
+
+function saveObjectProps() {
+  const vars = objectVars.value || {};
+  emit('update:objectProps', { id: props.activeObjectId, kind: props.activeObjectKind, name: objectName.value.trim(), vars });
+}
+
+function onFocusObjectProps() { activePropertyTab.value = 'object'; }
 
 function saveToUndoStack() {
   state.undoStack.push(JSON.parse(JSON.stringify(state.rootComponent)));
@@ -803,19 +913,17 @@ onMounted(() => {
 
 // 当父组件传入的 initialConfig 引用发生变化时，同步更新编辑器内部状态
 // 说明：这里不做深度监听，仅在引用变更时重置，以避免编辑过程中触发不必要的回写循环
-// watch(
-//   () => props.initialConfig,
-//   (val, oldVal) => {
-//     if (!val) return;
-//     // 仅在引用变化时才同步，避免编辑过程中的每次属性更新触发刷新
-//     if (val === oldVal) return;
-//     state.rootComponent = JSON.parse(JSON.stringify(val));
-//     // 保守处理：切换页面时清空选中状态，但不清空撤销/重做栈，避免误伤输入体验
-//     state.selectedComponent = null;
-//     state.componentPath = [];
-//   },
-//   { deep: false,immediate: false }
-// );
+watch(
+  () => props.initialConfig,
+  (val, oldVal) => {
+    if (!val) return;
+    if (val === oldVal) return;
+    state.rootComponent = JSON.parse(JSON.stringify(val));
+    state.selectedComponent = null;
+    state.componentPath = [];
+  },
+  { deep: false, immediate: false }
+);
 </script>
 
 <style scoped>
@@ -846,6 +954,22 @@ onMounted(() => {
   border-left: 1px solid var(--td-border-level-1-color);
   display: flex;
   flex-direction: column;
+}
+
+/* 层级面板顶部切换按钮 */
+.seg {
+  padding: 4px 8px;
+  border: 1px solid #bbb;
+  border-radius: 6px;
+  background: #fff;
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.seg.active {
+  background: #4a90e2;
+  border-color: #4a90e2;
+  color: #fff;
 }
 
 .tabs {
@@ -984,3 +1108,5 @@ onMounted(() => {
   }
 }
 </style>
+
+<!-- 源码对话框已并入上方根模板内 -->
