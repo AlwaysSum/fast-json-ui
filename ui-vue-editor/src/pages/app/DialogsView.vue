@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 // @ts-ignore 处理 Vue SFC 默认导出诊断（由 shims 提供）
 import JsonUiEditor from '../../components/JsonUiEditor.vue';
 import type { ComponentConfig } from 'fast-json-ui-vue';
@@ -82,6 +82,11 @@ onMounted(() => {
   }
   loadConfigForActive();
   dialogVars.value = AppConfigStore.getDialogVars(appId, activeId.value);
+  // 监听应用级配置变化
+  window.addEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
 });
 watch(activeId, () => { 
   loadConfigForActive();
@@ -137,6 +142,18 @@ function goto(kind: 'pages'|'dialogs'|'custom'){
   const base = `/app/${appId}`;
   const to = kind === 'pages' ? `${base}/pages` : (kind === 'dialogs' ? `${base}/dialogs` : `${base}/custom`);
   try { window.location.hash = `#${to}`; } catch {}
+}
+
+function onAppConfigChanged(e: CustomEvent){
+  const appId = String(route.params.appId || 'default');
+  const list = AppConfigStore.getDialogs(appId);
+  const newDialogs = list.map((d: AppDialogEntry) => ({ id: d.id, name: d.name }));
+  dialogs.value = newDialogs;
+  if (!newDialogs.find(p => p.id === activeId.value)) {
+    activeId.value = newDialogs[0]?.id ?? '';
+  }
+  loadConfigForActive();
+  dialogVars.value = AppConfigStore.getDialogVars(appId, activeId.value);
 }
 </script>
 

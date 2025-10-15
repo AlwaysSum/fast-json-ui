@@ -59,13 +59,23 @@
         <router-view />
       </section>
     </div>
+    <!-- 应用级源码预览对话框：放入根容器内，避免产生多个根元素；同时使用 :visible + @update:visible -->
+    <t-dialog :visible="showAppSourceDialog" @update:visible="val => showAppSourceDialog = !!val" header="应用级源码预览" width="800px">
+      <JsonPreview :data="appSourceData" />
+      <template #footer>
+        <button class="top-btn" @click="copyAppJson">复制 JSON</button>
+        <button class="top-btn" @click="showAppSourceDialog=false">关闭</button>
+      </template>
+    </t-dialog>
   </div>
 </template>
 
 <script setup lang="ts">
-import { computed, ref, onMounted, onBeforeUnmount, watch } from 'vue';
+import { computed, ref, onMounted, onBeforeUnmount, watch, defineAsyncComponent } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { AppConfigStore } from '../../services/AppConfigStore';
+// 懒加载 JSON 预览组件
+const JsonPreview = defineAsyncComponent(() => import('../../components/JsonPreview.vue'));
 
 const route = useRoute();
 const router = useRouter();
@@ -124,10 +134,62 @@ onMounted(() => { readSelectedLabel(); window.addEventListener('fju-selected-cha
 onBeforeUnmount(() => { window.removeEventListener('fju-selected-change', onSelectedChange as EventListener); });
 watch(() => route.fullPath, () => { readSelectedLabel(); });
 
-// 顶部三个按钮动作：通过全局事件通知当前编辑器视图（Pages/Dialogs/Custom）的 JsonUiEditor
-function openSource(){ try { window.dispatchEvent(new CustomEvent('fju-action-source')); } catch {} }
-function triggerExport(){ try { window.dispatchEvent(new CustomEvent('fju-action-export')); } catch {} }
-function triggerImport(){ try { window.dispatchEvent(new CustomEvent('fju-action-import')); } catch {} }
+// ===== 顶部按钮：应用级 AppConfig 操作 =====
+const showAppSourceDialog = ref(false);
+const appSourceData = ref<any>({});
+function openSource(){
+  const appId = String(route.params.appId || 'default');
+  const cfg = AppConfigStore.load(appId);
+  appSourceData.value = cfg;
+  showAppSourceDialog.value = true;
+}
+async function copyAppJson(){
+  try {
+    const text = JSON.stringify(appSourceData.value, null, 2);
+    await navigator.clipboard.writeText(text);
+    alert('应用配置 JSON 已复制到剪贴板');
+  } catch {}
+}
+function triggerExport(){
+  const appId = String(route.params.appId || 'default');
+  const cfg = AppConfigStore.load(appId);
+  const blob = new Blob([JSON.stringify(cfg, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `app-config-${appId}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function triggerImport(){
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = (event) => {
+    const file = (event.target as HTMLInputElement).files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const content = String(e.target?.result || '');
+        const data = JSON.parse(content);
+        const appId = String(route.params.appId || 'default');
+        AppConfigStore.save(appId, data);
+        // 通知子视图刷新
+        try { window.dispatchEvent(new CustomEvent('fju-app-config-changed', { detail: { appId } })); } catch {}
+        readSelectedLabel();
+        alert('应用配置已导入');
+      } catch (err) {
+        console.error(err);
+        alert('导入失败：JSON 格式无效');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 </script>
 
 <style scoped>

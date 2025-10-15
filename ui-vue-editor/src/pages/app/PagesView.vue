@@ -56,7 +56,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 // @ts-ignore 处理有时出现的“Module has no default export”诊断（Vue SFC 默认导出）
 import JsonUiEditor from '../../components/JsonUiEditor.vue';
 import type { ComponentConfig } from 'fast-json-ui-vue';
@@ -101,6 +101,11 @@ onMounted(() => {
   loadConfigForActive();
   // 载入当前页面入参变量
   pageVars.value = AppConfigStore.getPageVars(appId, activeId.value);
+  // 监听应用级配置变化
+  window.addEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
 });
 
 watch(activeId, () => {
@@ -114,6 +119,20 @@ function loadConfigForActive(){
   const cfg = AppConfigStore.getPageSchema(appId, activeId.value);
   if (cfg) { initialConfig.value = cfg; return; }
   initialConfig.value = { type:'column', children:[{ type:'text', text:`页面：${activeId.value}` }] } as ComponentConfig;
+}
+
+function onAppConfigChanged(e: CustomEvent){
+  const appId = String(route.params.appId || 'default');
+  // 重新加载页面列表
+  const cfg = AppConfigStore.load(appId);
+  const newPages = cfg.pages.map((p: AppPageEntry) => ({ id: p.id, name: p.name, path: p.path }));
+  pages.value = newPages;
+  // 保持现有 activeId，如不存在则重置为第一个
+  if (!newPages.find(p => String(p.id) === String(activeId.value))) {
+    activeId.value = newPages[0]?.id ?? 'home';
+  }
+  loadConfigForActive();
+  pageVars.value = AppConfigStore.getPageVars(appId, activeId.value);
 }
 
 function setActive(id:string|number){

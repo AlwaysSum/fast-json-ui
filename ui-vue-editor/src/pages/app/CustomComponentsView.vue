@@ -37,7 +37,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, watch, computed } from 'vue';
+import { ref, onMounted, onBeforeUnmount, watch, computed } from 'vue';
 // @ts-ignore 处理 Vue SFC 默认导出诊断（由 shims 提供）
 import JsonUiEditor from '../../components/JsonUiEditor.vue';
 import type { ComponentConfig } from 'fast-json-ui-vue';
@@ -83,6 +83,11 @@ onMounted(() => {
   }
   loadConfigForActive();
   componentVars.value = AppConfigStore.getCustomWidgetVars(appId, activeId.value);
+  // 监听应用级配置变化
+  window.addEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
+});
+onBeforeUnmount(() => {
+  window.removeEventListener('fju-app-config-changed', onAppConfigChanged as EventListener);
 });
 watch(activeId, () => { 
   loadConfigForActive();
@@ -138,6 +143,18 @@ function goto(kind: 'pages'|'dialogs'|'custom'){
   const base = `/app/${appId}`;
   const to = kind === 'pages' ? `${base}/pages` : (kind === 'dialogs' ? `${base}/dialogs` : `${base}/custom`);
   try { window.location.hash = `#${to}`; } catch {}
+}
+
+function onAppConfigChanged(e: CustomEvent){
+  const appId = String(route.params.appId || 'default');
+  const list = AppConfigStore.getCustomWidgets(appId);
+  const newItems = list.map((c: CustomWidgetEntry) => ({ id: c.id, name: c.name }));
+  items.value = newItems;
+  if (!newItems.find(p => p.id === activeId.value)) {
+    activeId.value = newItems[0]?.id ?? '';
+  }
+  loadConfigForActive();
+  componentVars.value = AppConfigStore.getCustomWidgetVars(appId, activeId.value);
 }
 </script>
 
