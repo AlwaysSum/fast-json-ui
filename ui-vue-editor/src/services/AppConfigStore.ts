@@ -23,12 +23,36 @@ export interface CustomWidgetEntry {
   vars?: Record<string, any>;
 }
 
+// ===== 数据管理（变量 / 复合变量 / 函数） =====
+export type DataEntryType = 'var' | 'composite' | 'func';
+export type DataValueType = 'number' | 'string' | 'boolean' | 'object' | 'array' | 'color';
+export interface DataEntry {
+  id: string;
+  name: string;
+  type: DataEntryType;
+  // 统一的类型标识：
+  // - 对于变量：代表值的类型
+  // - 对于复合变量、函数：代表表达式或函数返回值类型
+  valueType?: DataValueType;
+  // 变量存值；复合变量与函数使用 expr
+  value?: any;
+  expr?: string; // 表达式或函数体
+  // 历史版本：变量记录 value；表达式记录 expr
+  versions?: Array<{ expr?: string; value?: any; time: string }>; // 历史版本
+}
+export interface AppDataSection {
+  vars: DataEntry[];
+  composites: DataEntry[];
+  funcs: DataEntry[];
+}
+
 export interface AppConfigFile {
   name: string; // 应用名称
   createtime: string; // YYYY-MM-DD
   pages: AppPageEntry[];
   dialogs?: AppDialogEntry[];
   customWidgets?: CustomWidgetEntry[];
+  data?: AppDataSection; // 应用级数据（变量/复合变量/函数）
   version: string; // 配置版本
 }
 
@@ -45,6 +69,16 @@ function formatDate(date = new Date()) {
   const m = String(date.getMonth() + 1).padStart(2, '0');
   const d = String(date.getDate()).padStart(2, '0');
   return `${y}-${m}-${d}`;
+}
+
+function formatDateTime(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, '0');
+  const d = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const mm = String(date.getMinutes()).padStart(2, '0');
+  const ss = String(date.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`;
 }
 
 function defaultPageSchema(label = '欢迎使用 Fast-JSON-UI'): ComponentConfig {
@@ -97,6 +131,16 @@ export const AppConfigStore = {
       // 兼容旧版本，补全新字段
       if (!Array.isArray(existing.dialogs)) existing.dialogs = [];
       if (!Array.isArray(existing.customWidgets)) existing.customWidgets = [];
+      if (!existing.data) existing.data = { vars: [], composites: [], funcs: [] };
+      // 迁移老数据：变量可能只有 expr，将其迁移为 value（字符串），并设置默认类型
+      existing.data.vars = (existing.data.vars || []).map((v) => {
+        if ((v as any).expr && (v as any).value === undefined) {
+          return { ...v, value: (v as any).expr, expr: undefined, valueType: v.valueType || 'string' } as DataEntry;
+        }
+        return { ...v, valueType: v.valueType || 'string' } as DataEntry;
+      });
+      existing.data.composites = (existing.data.composites || []).map((c) => ({ ...c, expr: c.expr || '', valueType: c.valueType || 'string' } as DataEntry));
+      existing.data.funcs = (existing.data.funcs || []).map((f) => ({ ...f, expr: f.expr || '', valueType: f.valueType || 'string' } as DataEntry));
       return existing;
     }
     // 尝试从旧数据迁移
@@ -121,6 +165,7 @@ export const AppConfigStore = {
       ],
       dialogs: [],
       customWidgets: [],
+      data: { vars: [], composites: [], funcs: [] },
       version: '1.0.0',
     };
     writeJSON(key, def);
@@ -286,6 +331,136 @@ export const AppConfigStore = {
     const w = (cfg.customWidgets || []).find((x) => String(x.id) === String(widgetId));
     if (w) { w.vars = vars || {}; this.save(appId, cfg); }
   },
+
+  // ===== 应用数据（变量/复合变量/函数） =====
+  getData(appId: string): AppDataSection {
+    const cfg = this.load(appId);
+    cfg.data = cfg.data || { vars: [], composites: [], funcs: [] };
+    return cfg.data;
+  },
+  // ---- 通用帮助 ----
+  privateFind(appId: string, type: DataEntryType, id: string): DataEntry | undefined {
+    const data = this.getData(appId);
+    if (type === 'var') return data.vars.find((x) => x.id === id);
+    if (type === 'composite') return data.composites.find((x) => x.id === id);
+    return data.funcs.find((x) => x.id === id);
+  },
+  privateList(appId: string, type: DataEntryType): DataEntry[] {
+    const data = this.getData(appId);
+    if (type === 'var') return data.vars;
+    if (type === 'composite') return data.composites;
+    return data.funcs;
+  },
+  privatePush(appId: string, item: DataEntry) {
+    const cfg = this.load(appId);
+    cfg.data = cfg.data || { vars: [], composites: [], funcs: [] };
+    const pool = item.type === 'var' ? cfg.data.vars : item.type === 'composite' ? cfg.data.composites : cfg.data.funcs;
+    pool.push(item);
+    this.save(appId, cfg);
+  },
+  privateRemove(appId: string, type: DataEntryType, id: string) {
+    const cfg = this.load(appId);
+    cfg.data = cfg.data || { vars: [], composites: [], funcs: [] };
+    if (type === 'var') cfg.data.vars = (cfg.data.vars || []).filter((x) => x.id !== id);
+    else if (type === 'composite') cfg.data.composites = (cfg.data.composites || []).filter((x) => x.id !== id);
+    else cfg.data.funcs = (cfg.data.funcs || []).filter((x) => x.id !== id);
+    this.save(appId, cfg);
+  },
+  privateRename(appId: string, type: DataEntryType, id: string, newName: string) {
+    const cfg = this.load(appId);
+    const it = this.privateFind(appId, type, id);
+    if (it) { it.name = newName.trim() || it.name; this.save(appId, cfg); }
+  },
+  privateSetType(appId: string, type: DataEntryType, id: string, valueType: DataValueType) {
+    const cfg = this.load(appId);
+    const it = this.privateFind(appId, type, id);
+    if (it) { it.valueType = valueType; this.save(appId, cfg); }
+  },
+  privateSetExpr(appId: string, type: DataEntryType, id: string, expr: string) {
+    const cfg = this.load(appId);
+    const it = this.privateFind(appId, type, id);
+    if (it) {
+      if (!Array.isArray(it.versions)) it.versions = [];
+      // 保存旧版本
+      if (typeof it.expr === 'string' && it.expr !== expr) {
+        it.versions.push({ expr: it.expr, time: formatDateTime() });
+        if (it.versions.length > 50) it.versions.shift(); // 限制历史长度
+      }
+      it.expr = expr;
+      this.save(appId, cfg);
+    }
+  },
+  privateSetValue(appId: string, id: string, value: any) {
+    const cfg = this.load(appId);
+    const it = this.privateFind(appId, 'var', id);
+    if (it) {
+      if (!Array.isArray(it.versions)) it.versions = [];
+      // 保存旧版本
+      if (it.value !== value) {
+        it.versions.push({ value: it.value, time: formatDateTime() });
+        if (it.versions.length > 50) it.versions.shift();
+      }
+      it.value = value;
+      this.save(appId, cfg);
+    }
+  },
+  privateRollbackLatest(appId: string, type: DataEntryType, id: string) {
+    const cfg = this.load(appId);
+    const it = this.privateFind(appId, type, id);
+    if (it && Array.isArray(it.versions) && it.versions.length > 0) {
+      const last = it.versions.pop();
+      if (last) {
+        if (type === 'var') it.value = (last as any).value;
+        else it.expr = last.expr as string;
+      }
+      this.save(appId, cfg);
+      return true;
+    }
+    return false;
+  },
+  // ---- 变量 ----
+  listVars(appId: string): DataEntry[] { return this.privateList(appId, 'var'); },
+  addVar(appId: string, name: string): DataEntry {
+    const id = Math.random().toString(36).slice(2, 8);
+    const entry: DataEntry = { id, name: name.trim() || '未命名变量', type: 'var', valueType: 'string', value: '' };
+    this.privatePush(appId, entry);
+    return entry;
+  },
+  renameVar(appId: string, id: string, newName: string) { this.privateRename(appId, 'var', id, newName); },
+  removeVar(appId: string, id: string) { this.privateRemove(appId, 'var', id); },
+  // 新：变量值管理
+  getVarValue(appId: string, id: string): any { return this.privateFind(appId, 'var', id)?.value; },
+  setVarValue(appId: string, id: string, value: any) { this.privateSetValue(appId, id, value); },
+  setVarType(appId: string, id: string, valueType: DataValueType) { this.privateSetType(appId, 'var', id, valueType); },
+  rollbackVar(appId: string, id: string): boolean { return this.privateRollbackLatest(appId, 'var', id); },
+  // ---- 复合变量 ----
+  listComposites(appId: string): DataEntry[] { return this.privateList(appId, 'composite'); },
+  addComposite(appId: string, name: string): DataEntry {
+    const id = Math.random().toString(36).slice(2, 8);
+    const entry: DataEntry = { id, name: name.trim() || '未命名复合变量', type: 'composite', expr: '', valueType: 'string' };
+    this.privatePush(appId, entry);
+    return entry;
+  },
+  renameComposite(appId: string, id: string, newName: string) { this.privateRename(appId, 'composite', id, newName); },
+  removeComposite(appId: string, id: string) { this.privateRemove(appId, 'composite', id); },
+  getCompositeExpr(appId: string, id: string): string { return this.privateFind(appId, 'composite', id)?.expr || ''; },
+  setCompositeExpr(appId: string, id: string, expr: string) { this.privateSetExpr(appId, 'composite', id, expr); },
+  setCompositeType(appId: string, id: string, valueType: DataValueType) { this.privateSetType(appId, 'composite', id, valueType); },
+  rollbackComposite(appId: string, id: string): boolean { return this.privateRollbackLatest(appId, 'composite', id); },
+  // ---- 函数 ----
+  listFuncs(appId: string): DataEntry[] { return this.privateList(appId, 'func'); },
+  addFunc(appId: string, name: string): DataEntry {
+    const id = Math.random().toString(36).slice(2, 8);
+    const entry: DataEntry = { id, name: name.trim() || '未命名函数', type: 'func', expr: '(...args) => {\n  // TODO: 实现函数体\n  return args[0];\n}', valueType: 'string' };
+    this.privatePush(appId, entry);
+    return entry;
+  },
+  renameFunc(appId: string, id: string, newName: string) { this.privateRename(appId, 'func', id, newName); },
+  removeFunc(appId: string, id: string) { this.privateRemove(appId, 'func', id); },
+  getFuncExpr(appId: string, id: string): string { return this.privateFind(appId, 'func', id)?.expr || ''; },
+  setFuncExpr(appId: string, id: string, expr: string) { this.privateSetExpr(appId, 'func', id, expr); },
+  setFuncType(appId: string, id: string, valueType: DataValueType) { this.privateSetType(appId, 'func', id, valueType); },
+  rollbackFunc(appId: string, id: string): boolean { return this.privateRollbackLatest(appId, 'func', id); },
 };
 
 export default AppConfigStore;
