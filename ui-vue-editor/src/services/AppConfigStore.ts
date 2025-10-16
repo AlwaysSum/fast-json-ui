@@ -104,20 +104,65 @@ function writeJSON(key: string, value: any) {
   localStorage.setItem(key, JSON.stringify(value));
 }
 
+// 统一清理旧版 localStorage 键，避免与统一的 fju-app-config-<appId> 产生混淆
+function cleanupLegacyKeys(appId: string, cfg?: AppConfigFile) {
+  try {
+    // 列表类旧键
+    localStorage.removeItem(STORAGE_PAGES_PREFIX + appId);
+    localStorage.removeItem(STORAGE_DIALOGS_PREFIX + appId);
+    localStorage.removeItem(STORAGE_CUSTOM_PREFIX + appId);
+    // 逐项旧配置键（页面/弹窗/自定义组件）按 cfg 提示清理
+    const pages = cfg?.pages || [];
+    for (const p of pages) { try { localStorage.removeItem(`${STORAGE_PAGE_CONFIG_PREFIX}${appId}-${p.id}`); } catch {} }
+    const dialogs = (cfg?.dialogs || []) as Array<{ id: string }>
+    for (const d of dialogs) { try { localStorage.removeItem(`${STORAGE_DIALOG_CONFIG_PREFIX}${appId}-${d.id}`); } catch {} }
+    const customWidgets = (cfg?.customWidgets || []) as Array<{ id: string }>
+    for (const w of customWidgets) { try { localStorage.removeItem(`${STORAGE_CUSTOM_CONFIG_PREFIX}${appId}-${w.id}`); } catch {} }
+    // 再做一次兜底：枚举 localStorage 删除所有以旧前缀开头的键
+    try {
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i) || '';
+        if (!k) continue;
+        if (k === STORAGE_PAGES_PREFIX + appId || k === STORAGE_DIALOGS_PREFIX + appId || k === STORAGE_CUSTOM_PREFIX + appId) {
+          try { localStorage.removeItem(k); } catch {}
+          continue;
+        }
+        if (k.startsWith(`${STORAGE_PAGE_CONFIG_PREFIX}${appId}-`) || k.startsWith(`${STORAGE_DIALOG_CONFIG_PREFIX}${appId}-`) || k.startsWith(`${STORAGE_CUSTOM_CONFIG_PREFIX}${appId}-`)) {
+          try { localStorage.removeItem(k); } catch {}
+        }
+      }
+    } catch {}
+  } catch {}
+}
+
 function migrateFromLegacy(appId: string): AppConfigFile | null {
-  const listKey = STORAGE_PAGES_PREFIX + appId;
-  const pagesList = readJSON<Array<{ id: string; name: string; path: string }>>(listKey);
-  if (!pagesList || !Array.isArray(pagesList) || pagesList.length === 0) {
-    return null;
-  }
+  // 旧版页面列表
+  const pagesList = readJSON<Array<{ id: string; name: string; path: string }>>(STORAGE_PAGES_PREFIX + appId);
+  // 如果页面列表不存在，认为无需迁移
+  if (!pagesList || !Array.isArray(pagesList) || pagesList.length === 0) { return null; }
   const pages: AppPageEntry[] = pagesList.map((p) => {
     const cfg = readJSON<ComponentConfig>(`${STORAGE_PAGE_CONFIG_PREFIX}${appId}-${p.id}`) || defaultPageSchema(`页面：${p.name}`);
     return { id: p.id, name: p.name, desc: '使用可视化编辑器自定义页面', path: p.path, schema: cfg, vars: {} };
+  });
+  // 旧版弹窗列表
+  const legacyDialogs = readJSON<Array<{ id: string; name: string }>>(STORAGE_DIALOGS_PREFIX + appId) || [];
+  const dialogs: AppDialogEntry[] = legacyDialogs.map((d) => {
+    const cfg = readJSON<ComponentConfig>(`${STORAGE_DIALOG_CONFIG_PREFIX}${appId}-${d.id}`) || defaultDialogSchema(`弹窗：${d.name}`);
+    return { id: d.id, name: d.name, schema: cfg, vars: {} };
+  });
+  // 旧版自定义组件列表
+  const legacyCustoms = readJSON<Array<{ id: string; name: string }>>(STORAGE_CUSTOM_PREFIX + appId) || [];
+  const customWidgets: CustomWidgetEntry[] = legacyCustoms.map((w) => {
+    const cfg = readJSON<ComponentConfig>(`${STORAGE_CUSTOM_CONFIG_PREFIX}${appId}-${w.id}`) || defaultCustomWidgetSchema(`组件：${w.name}`);
+    return { id: w.id, name: w.name, schema: cfg, vars: {} };
   });
   const cfg: AppConfigFile = {
     name: `应用/${appId}`,
     createtime: formatDate(),
     pages,
+    dialogs,
+    customWidgets,
+    data: { vars: [], composites: [], funcs: [] },
     version: '1.0.0',
   };
   return cfg;
@@ -147,6 +192,8 @@ export const AppConfigStore = {
     const migrated = migrateFromLegacy(appId);
     if (migrated) {
       writeJSON(key, migrated);
+      // 迁移后清理旧键，避免后续视图误读
+      cleanupLegacyKeys(appId, migrated);
       return migrated;
     }
     // 初始化一个默认配置
@@ -174,6 +221,25 @@ export const AppConfigStore = {
 
   save(appId: string, cfg: AppConfigFile) {
     writeJSON(STORAGE_APP_CONFIG_PREFIX + appId, cfg);
+    // 保存后清理旧键，确保只保留统一配置
+    cleanupLegacyKeys(appId, cfg);
+    // 统一派发配置变更事件，方便各子视图刷新（如 Pages/Dialogs/Data 等）
+    try {
+      if (typeof window !== 'undefined' && typeof window.dispatchEvent === 'function') {
+        window.dispatchEvent(new CustomEvent('fju-app-config-changed', { detail: { appId } }));
+      }
+    } catch {}
+  },
+
+  // 删除应用配置（用于从 HomePage 中删除应用时清理配置）
+  removeApp(appId: string) {
+    try {
+      localStorage.removeItem(STORAGE_APP_CONFIG_PREFIX + appId);
+      // 额外清理旧键，避免遗留
+      cleanupLegacyKeys(appId);
+      // 清理选中状态键
+      try { localStorage.removeItem('fju-app-selected-' + appId); } catch {}
+    } catch {}
   },
 
   getName(appId: string): string {
@@ -345,6 +411,15 @@ export const AppConfigStore = {
     if (type === 'composite') return data.composites.find((x) => x.id === id);
     return data.funcs.find((x) => x.id === id);
   },
+  // 注意：上述 privateFind 会重新 load 一份配置对象。
+  // 在需要“修改并保存”的场景下，如果我们 mutate 的不是同一份 cfg 引用，就会出现修改未写入的情况。
+  // 因此新增基于已加载 cfg 的查找方法，确保 mutate 与 save 作用于同一对象。
+  privateFindInCfg(cfg: AppConfigFile, type: DataEntryType, id: string): DataEntry | undefined {
+    const data = (cfg.data ||= { vars: [], composites: [], funcs: [] });
+    if (type === 'var') return data.vars.find((x) => x.id === id);
+    if (type === 'composite') return data.composites.find((x) => x.id === id);
+    return data.funcs.find((x) => x.id === id);
+  },
   privateList(appId: string, type: DataEntryType): DataEntry[] {
     const data = this.getData(appId);
     if (type === 'var') return data.vars;
@@ -368,17 +443,23 @@ export const AppConfigStore = {
   },
   privateRename(appId: string, type: DataEntryType, id: string, newName: string) {
     const cfg = this.load(appId);
-    const it = this.privateFind(appId, type, id);
-    if (it) { it.name = newName.trim() || it.name; this.save(appId, cfg); }
+    const it = this.privateFindInCfg(cfg, type, id);
+    if (it) {
+      it.name = newName.trim() || it.name;
+      this.save(appId, cfg);
+    }
   },
   privateSetType(appId: string, type: DataEntryType, id: string, valueType: DataValueType) {
     const cfg = this.load(appId);
-    const it = this.privateFind(appId, type, id);
-    if (it) { it.valueType = valueType; this.save(appId, cfg); }
+    const it = this.privateFindInCfg(cfg, type, id);
+    if (it) {
+      it.valueType = valueType;
+      this.save(appId, cfg);
+    }
   },
   privateSetExpr(appId: string, type: DataEntryType, id: string, expr: string) {
     const cfg = this.load(appId);
-    const it = this.privateFind(appId, type, id);
+    const it = this.privateFindInCfg(cfg, type, id);
     if (it) {
       if (!Array.isArray(it.versions)) it.versions = [];
       // 保存旧版本
@@ -392,7 +473,7 @@ export const AppConfigStore = {
   },
   privateSetValue(appId: string, id: string, value: any) {
     const cfg = this.load(appId);
-    const it = this.privateFind(appId, 'var', id);
+    const it = this.privateFindInCfg(cfg, 'var', id);
     if (it) {
       if (!Array.isArray(it.versions)) it.versions = [];
       // 保存旧版本
@@ -406,7 +487,7 @@ export const AppConfigStore = {
   },
   privateRollbackLatest(appId: string, type: DataEntryType, id: string) {
     const cfg = this.load(appId);
-    const it = this.privateFind(appId, type, id);
+    const it = this.privateFindInCfg(cfg, type, id);
     if (it && Array.isArray(it.versions) && it.versions.length > 0) {
       const last = it.versions.pop();
       if (last) {

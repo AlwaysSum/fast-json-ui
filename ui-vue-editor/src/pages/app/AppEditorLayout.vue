@@ -60,7 +60,7 @@
       </section>
     </div>
     <!-- 应用级源码预览对话框：放入根容器内，避免产生多个根元素；同时使用 :visible + @update:visible -->
-    <t-dialog :visible="showAppSourceDialog" @update:visible="val => showAppSourceDialog = !!val" header="应用级源码预览" width="800px">
+    <t-dialog :visible="showAppSourceDialog" @update:visible="onAppSourceVisibleUpdate" header="应用级源码预览" width="800px">
       <JsonPreview :data="appSourceData" />
       <template #footer>
         <button class="top-btn" @click="copyAppJson">复制 JSON</button>
@@ -143,6 +143,10 @@ function openSource(){
   appSourceData.value = cfg;
   showAppSourceDialog.value = true;
 }
+function onAppSourceVisibleUpdate(val: boolean){
+  // 强类型布尔参数，避免模板内隐式 any 警告
+  showAppSourceDialog.value = !!val;
+}
 async function copyAppJson(){
   try {
     const text = JSON.stringify(appSourceData.value, null, 2);
@@ -193,7 +197,7 @@ function triggerImport(){
 </script>
 
 <style scoped>
-.app-editor { display:flex; flex-direction:column; height: calc(100vh - 70px); }
+.app-editor { display:flex; flex-direction:column; height: calc(100vh - 70px); min-height:0; }
 .app-topbar { display:flex; align-items:center; justify-content:space-between; padding:8px 12px; background:#d0d0d0; }
 .left { display:flex; align-items:center; gap:10px; }
 .back { padding: 4px 8px; border-radius:6px; border:1px solid #aaa; background:#fff; cursor:pointer; }
@@ -203,11 +207,11 @@ function triggerImport(){
 .right { display:flex; gap:8px; }
 .top-btn { padding: 4px 10px; border:1px solid #aaa; border-radius:6px; background:#fff; cursor:pointer; }
 
-.editor-body { display:flex; flex:1; }
-.sidebar { width: 96px; background:#efefef; padding:8px 6px; display:flex; flex-direction:column; gap:6px; }
+.editor-body { display:flex; flex:1; min-height:0; }
+.sidebar { width: 96px; background:#efefef; padding:8px 6px; display:flex; flex-direction:column; gap:6px; overflow-y:auto; }
 .menu-item { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; padding:8px; border-radius:10px; text-decoration:none; color:#222; background:#fff; border:1px solid #ddd; }
 .menu-item.active { border-color:#4a90e2; box-shadow:0 0 0 2px rgba(74,144,226,.2); }
 .icon { width:22px; height:22px; border-radius:50%; background:#fff; border:1px solid #ccc; display:flex; align-items:center; justify-content:center; font-size:12px; }
 .text { font-size:11px; }
-.content { flex:1; background:#fff; padding:10px; }
+.content { flex:1; background:#fff; padding:10px; overflow-y:auto; min-height:0; }
 </style>

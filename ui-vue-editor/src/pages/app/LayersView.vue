@@ -33,8 +33,6 @@ import { AppConfigStore } from '../../services/AppConfigStore';
 
 // 选择项与配置键前缀
 const STORAGE_SELECTED_PREFIX = 'fju-app-selected-';
-const STORAGE_PAGES_PREFIX = 'fju-app-pages-';
-const STORAGE_PAGE_CONFIG_PREFIX = 'fju-app-page-config-';
 // 旧的 localStorage 键用于兼容读取当前选择项；配置读写统一走 AppConfigStore
 
 const route = useRoute();
@@ -51,15 +49,14 @@ onMounted(() => {
     try { const v = JSON.parse(selRaw); if (v && v.kind && v.id) selected.value = v; } catch {}
   }
 
-  // 如果没有选择，默认选择第一个页面
+  // 如果没有选择，默认选择当前应用配置中的第一个页面
   if (!selected.value?.id) {
-    const pagesRaw2 = localStorage.getItem(STORAGE_PAGES_PREFIX + appId);
-    if (pagesRaw2) {
-      try {
-        const p = JSON.parse(pagesRaw2) as Array<{ id: string }>; 
-        if (Array.isArray(p) && p.length) selected.value = { kind: 'page', id: p[0].id };
-      } catch {}
-    }
+    try {
+      const list = AppConfigStore.getPages(appId);
+      if (Array.isArray(list) && list.length) {
+        selected.value = { kind: 'page', id: list[0].id };
+      }
+    } catch {}
     // 回退到首页
     if (!selected.value?.id) selected.value = { kind: 'page', id: 'home' };
     localStorage.setItem(STORAGE_SELECTED_PREFIX + appId, JSON.stringify(selected.value));

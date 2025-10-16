@@ -118,6 +118,8 @@ function confirmDelete(app: AppRecord) {
   if (confirm(`确认删除应用「${app.name}」？`)) {
     apps.value = apps.value.filter(a => a.id !== app.id);
     save();
+    // 同步删除统一的应用配置以及遗留旧键
+    try { AppConfigStore.removeApp(app.id); } catch {}
   }
 }
 
